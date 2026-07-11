@@ -1,0 +1,214 @@
+[
+  {
+    "tag": "course",
+    "raw": "reserve a table for four at the italian place no wait make it six",
+    "clean": "Reserve a table for six at the Italian place.",
+    "retract": "four",
+    "target": "six"
+  },
+  {
+    "tag": "course",
+    "raw": "pick up the dry cleaning on maple street not maple, elm street",
+    "clean": "Pick up the dry cleaning on Elm Street.",
+    "retract": "maple street",
+    "target": "elm street"
+  },
+  {
+    "tag": "course",
+    "raw": "ship the package with overnight shipping I mean two-day shipping",
+    "clean": "Ship the package with two-day shipping.",
+    "retract": "overnight shipping",
+    "target": "two-day shipping"
+  },
+  {
+    "tag": "course",
+    "raw": "set the oven to three fifty no wait three seventy-five for the lasagna",
+    "clean": "Set the oven to three seventy-five for the lasagna.",
+    "retract": "three fifty",
+    "target": "three seventy-five"
+  },
+  {
+    "tag": "course",
+    "raw": "book a window seat on the morning train scratch that the afternoon train",
+    "clean": "Book a window seat on the afternoon train.",
+    "retract": "morning train",
+    "target": "afternoon train"
+  },
+  {
+    "tag": "course",
+    "raw": "add cumin to the chili not cumin, smoked paprika",
+    "clean": "Add smoked paprika to the chili.",
+    "retract": "cumin",
+    "target": "smoked paprika"
+  },
+  {
+    "tag": "course",
+    "raw": "merge the feature branch into develop no wait into main",
+    "clean": "Merge the feature branch into main.",
+    "retract": "develop",
+    "target": "main"
+  },
+  {
+    "tag": "course",
+    "raw": "remind me to call the landlord on friday I mean thursday",
+    "clean": "Remind me to call the landlord on Thursday.",
+    "retract": "friday",
+    "target": "thursday"
+  },
+  {
+    "tag": "course",
+    "raw": "order two bags of potting soil no make that three bags",
+    "clean": "Order three bags of potting soil.",
+    "retract": "two bags",
+    "target": "three bags"
+  },
+  {
+    "tag": "course",
+    "raw": "the conference is in austin scratch that denver next month",
+    "clean": "The conference is in Denver next month.",
+    "retract": "austin",
+    "target": "denver"
+  },
+  {
+    "tag": "course",
+    "raw": "bump the api timeout to thirty seconds not thirty, sixty seconds",
+    "clean": "Bump the API timeout to sixty seconds.",
+    "retract": "thirty seconds",
+    "target": "sixty seconds"
+  },
+  {
+    "tag": "course",
+    "raw": "grab oat milk from the corner store no wait almond milk",
+    "clean": "Grab almond milk from the corner store.",
+    "retract": "oat milk",
+    "target": "almond milk"
+  },
+  {
+    "tag": "course",
+    "raw": "schedule the dentist for ten am I mean eleven thirty",
+    "clean": "Schedule the dentist for eleven thirty.",
+    "retract": "ten am",
+    "target": "eleven thirty"
+  },
+  {
+    "tag": "course",
+    "raw": "write the unit tests in jest no wait in vitest",
+    "clean": "Write the unit tests in Vitest.",
+    "retract": "jest",
+    "target": "vitest"
+  },
+  {
+    "tag": "course",
+    "raw": "take the coastal highway to the cabin not the coastal, the inland route",
+    "clean": "Take the inland route to the cabin.",
+    "retract": "coastal highway",
+    "target": "inland route"
+  },
+  {
+    "tag": "course",
+    "raw": "simmer the sauce for twenty minutes scratch that forty minutes",
+    "clean": "Simmer the sauce for forty minutes.",
+    "retract": "twenty minutes",
+    "target": "forty minutes"
+  },
+  {
+    "tag": "light",
+    "raw": "um so yeah please water the ferns before you leave for work",
+    "clean": "Please water the ferns before you leave for work."
+  },
+  {
+    "tag": "light",
+    "raw": "i need to like renew my passport before the trip to lisbon",
+    "clean": "I need to renew my passport before the trip to Lisbon."
+  },
+  {
+    "tag": "light",
+    "raw": "the uh the bike chain is squeaking again after yesterday's ride",
+    "clean": "The bike chain is squeaking again after yesterday's ride."
+  },
+  {
+    "tag": "light",
+    "raw": "can you you know print the boarding passes tonight",
+    "clean": "Can you print the boarding passes tonight?"
+  },
+  {
+    "tag": "light",
+    "raw": "we should basically refactor the login form before the next sprint",
+    "clean": "We should refactor the login form before the next sprint."
+  },
+  {
+    "tag": "light",
+    "raw": "uh stir the risotto every couple of minutes until it's creamy",
+    "clean": "Stir the risotto every couple of minutes until it's creamy."
+  },
+  {
+    "tag": "light",
+    "raw": "i'll pick up the prescription at the pharmacy on my way home",
+    "clean": "I'll pick up the prescription at the pharmacy on my way home."
+  },
+  {
+    "tag": "light",
+    "raw": "the the rental car needs to be returned by noon on sunday",
+    "clean": "The rental car needs to be returned by noon on Sunday."
+  },
+  {
+    "tag": "light",
+    "raw": "please um file the expense report for the client dinner",
+    "clean": "Please file the expense report for the client dinner."
+  },
+  {
+    "tag": "light",
+    "raw": "like don't forget to charge the camera battery before the hike",
+    "clean": "Don't forget to charge the camera battery before the hike."
+  },
+  {
+    "tag": "light",
+    "raw": "deploy the hotfix after the database migration finishes",
+    "clean": "Deploy the hotfix after the database migration finishes."
+  },
+  {
+    "tag": "light",
+    "raw": "so yeah toast the walnuts lightly before you add them to the salad",
+    "clean": "Toast the walnuts lightly before you add them to the salad."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The ferry leaves the harbor at half past six sharp.",
+    "clean": "The ferry leaves the harbor at half past six sharp."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Marinate the chicken overnight in lemon, garlic, and oregano.",
+    "clean": "Marinate the chicken overnight in lemon, garlic, and oregano."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Close the pull request after the code review is complete.",
+    "clean": "Close the pull request after the code review is complete."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Pack a rain jacket; the mountain forecast looks unstable.",
+    "clean": "Pack a rain jacket; the mountain forecast looks unstable."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Return the library books before the late fees start.",
+    "clean": "Return the library books before the late fees start."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The bakery opens at seven and sells out of croissants by nine.",
+    "clean": "The bakery opens at seven and sells out of croissants by nine."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Document the edge cases in the README for the next maintainer.",
+    "clean": "Document the edge cases in the README for the next maintainer."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Confirm the hotel checkout time before we leave for the airport.",
+    "clean": "Confirm the hotel checkout time before we leave for the airport."
+  }
+]

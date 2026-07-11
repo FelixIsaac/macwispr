@@ -1,0 +1,62 @@
+[
+  {
+    "raw": "see we can improve the UI a bit more because currently it's it's glitching",
+    "clean": "See, we can improve the UI a bit more because currently it's glitching.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "um can you open settings and check the hotkey mode for me",
+    "clean": "Can you open Settings and check the hotkey mode for me?",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "what ? why did it paste twice into slack",
+    "clean": "What? Why did it paste twice into Slack?",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "switch to qwen one point seven b when when system ram is over sixteen gb",
+    "clean": "Switch to Qwen 1.7B when system RAM is over sixteen GB.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "i tried parakeet v3 and and the latency felt pretty good",
+    "clean": "I tried Parakeet v3 and the latency felt pretty good.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "telemetry is opt in right so it should stay off by by default",
+    "clean": "Telemetry is opt-in, right, so it should stay off by default.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "please please don't send transcript text through posthog",
+    "clean": "Please don't send transcript text through PostHog.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "this this this sentence has too many thises",
+    "clean": "This sentence has too many thises.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "like basically we want light cleanup not a full rewrite",
+    "clean": "We want light cleanup, not a full rewrite.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "stay on swift size and ram are model bound not language bound",
+    "clean": "Stay on Swift; size and RAM are model-bound, not language-bound.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "it's still using six gb even even after i picked the smaller model",
+    "clean": "It's still using six GB even after I picked the smaller model.",
+    "tag": "light_polish"
+  },
+  {
+    "raw": "i i need the event tap and carbon hotkey as backup",
+    "clean": "I need the event tap and Carbon hotkey as backup.",
+    "tag": "light_polish"
+  }
+]

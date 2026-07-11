@@ -1,0 +1,202 @@
+[
+  {
+    "raw": "I wanna get the bag no not not not bag my phone",
+    "clean": "I want to get my phone.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "I wanna get my bag. No, no, not not bag, my phone.",
+    "clean": "I want to get my phone.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "things I wanna get the bag no not not not bag my phone. It it should just do things I wanna get my phone instead of saying, I wanna get my bag. No, no, not not bag, my phone.",
+    "clean": "I want to get my phone.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "send it to John wait no send it to Sarah",
+    "clean": "Send it to Sarah.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "we should use Qwen wait no use Parakeet V three",
+    "clean": "We should use Parakeet V3.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "open settings uh no open transcription settings",
+    "clean": "Open transcription settings.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "ship version one point two point one no one point two point two",
+    "clean": "Ship version 1.2.2.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "default to zero point six B no wait if they have more than sixteen GB use one point seven B",
+    "clean": "If they have more than sixteen GB, default to 1.7B; otherwise use 0.6B.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "meet me at three no four o'clock",
+    "clean": "Meet me at four o'clock.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "add telemetry by default actually no make it opt in not default",
+    "clean": "Make telemetry opt-in, not default.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "use Gemma two seventy B no million two seventy M",
+    "clean": "Use Gemma 270M.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "put the keys at the top no no put them at the bottom collapsed",
+    "clean": "Put the keys at the bottom, collapsed.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "benchmark LFM one point two B no not that the three fifty M",
+    "clean": "Benchmark the LFM 350M.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "call it Mac Whisper no MacWispr one word",
+    "clean": "Call it MacWispr, one word.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "I'm going to the store to buy milk actually no eggs",
+    "clean": "I'm going to the store to buy eggs.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "email Dan about the launch wait I mean email the whole team",
+    "clean": "Email the whole team about the launch.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "set the hotkey to command space no option space",
+    "clean": "Set the hotkey to Option Space.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "the model takes five gigabytes no wait fifty megabytes something like that",
+    "clean": "The model takes something like fifty megabytes, not five gigabytes.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "release tomorrow no ship Friday after notarization",
+    "clean": "Ship Friday after notarization.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "use OpenAI for polish always no only if they have a key otherwise local",
+    "clean": "Use OpenAI for polish only if they have a key; otherwise local.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "delete the history no don't delete just hide it",
+    "clean": "Don't delete the history; just hide it.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "Parquet V two no Parakeet V three for Europe",
+    "clean": "Use Parakeet V3 for Europe.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "I need the red button the cancel one no the record button",
+    "clean": "I need the record button.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "write a LinkedIn post no Product Hunt first then LinkedIn",
+    "clean": "Write a Product Hunt post first, then LinkedIn.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "the banner should say listening release to stop no words just a glowing dot and a timer",
+    "clean": "The banner should have no words—just a glowing dot and a timer.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "train Gemma no train LFM two point five three fifty M for cleanup",
+    "clean": "Train LFM 2.5 350M for cleanup.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "push to main no don't push keep it on a branch",
+    "clean": "Don't push to main; keep it on a branch.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "I said bag earlier but I meant phone I want my phone",
+    "clean": "I want my phone.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "schedule for Tuesday wait Wednesday at noon",
+    "clean": "Schedule for Wednesday at noon.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "enable cloud STT no keep it local only",
+    "clean": "Keep it local only.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "um so like install the big model no the small one if RAM is low",
+    "clean": "Install the small model if RAM is low.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "compare Rust and Zig for a rewrite actually don't rewrite stay on Swift",
+    "clean": "Don't rewrite—stay on Swift. (We were only comparing Rust and Zig theoretically.)",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "the domain is whisperflow no fuckwisprflow.com",
+    "clean": "The domain is fuckwisprflow.com.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "show WER for Qwen zero point six versus one point seven",
+    "clean": "Show WER for Qwen 0.6B versus 1.7B.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "I want coffee no tea with milk",
+    "clean": "I want tea with milk.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "fix the bug in HotkeyManager no in TextPolisher",
+    "clean": "Fix the bug in TextPolisher.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "use flow style cleanup medium no light only for now",
+    "clean": "Use light cleanup only for now.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "download the one point two billion parameter model no the three hundred fifty million",
+    "clean": "Download the 350 million parameter model.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "make the chime louder no softer volume",
+    "clean": "Make the chime softer.",
+    "tag": "course_correction"
+  },
+  {
+    "raw": "that's the one from Ornith no Liquid LFM",
+    "clean": "That's the one from Liquid LFM.",
+    "tag": "course_correction"
+  }
+]

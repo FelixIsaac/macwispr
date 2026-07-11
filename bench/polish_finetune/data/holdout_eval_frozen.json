@@ -1,0 +1,564 @@
+[
+  {
+    "tag": "course",
+    "raw": "reserve a table for four at the italian place no wait make it six",
+    "clean": "Reserve a table for six at the Italian place.",
+    "retract": "four",
+    "target": "six"
+  },
+  {
+    "tag": "course",
+    "raw": "pick up the dry cleaning on maple street not maple, elm street",
+    "clean": "Pick up the dry cleaning on Elm Street.",
+    "retract": "maple street",
+    "target": "elm street"
+  },
+  {
+    "tag": "course",
+    "raw": "ship the package with overnight shipping I mean two-day shipping",
+    "clean": "Ship the package with two-day shipping.",
+    "retract": "overnight shipping",
+    "target": "two-day shipping"
+  },
+  {
+    "tag": "course",
+    "raw": "set the oven to three fifty no wait three seventy-five for the lasagna",
+    "clean": "Set the oven to three seventy-five for the lasagna.",
+    "retract": "three fifty",
+    "target": "three seventy-five"
+  },
+  {
+    "tag": "course",
+    "raw": "book a window seat on the morning train scratch that the afternoon train",
+    "clean": "Book a window seat on the afternoon train.",
+    "retract": "morning train",
+    "target": "afternoon train"
+  },
+  {
+    "tag": "course",
+    "raw": "add cumin to the chili not cumin, smoked paprika",
+    "clean": "Add smoked paprika to the chili.",
+    "retract": "cumin",
+    "target": "smoked paprika"
+  },
+  {
+    "tag": "course",
+    "raw": "merge the feature branch into develop no wait into main",
+    "clean": "Merge the feature branch into main.",
+    "retract": "develop",
+    "target": "main"
+  },
+  {
+    "tag": "course",
+    "raw": "remind me to call the landlord on friday I mean thursday",
+    "clean": "Remind me to call the landlord on Thursday.",
+    "retract": "friday",
+    "target": "thursday"
+  },
+  {
+    "tag": "course",
+    "raw": "order two bags of potting soil no make that three bags",
+    "clean": "Order three bags of potting soil.",
+    "retract": "two bags",
+    "target": "three bags"
+  },
+  {
+    "tag": "course",
+    "raw": "the conference is in austin scratch that denver next month",
+    "clean": "The conference is in Denver next month.",
+    "retract": "austin",
+    "target": "denver"
+  },
+  {
+    "tag": "course",
+    "raw": "bump the api timeout to thirty seconds not thirty, sixty seconds",
+    "clean": "Bump the API timeout to sixty seconds.",
+    "retract": "thirty seconds",
+    "target": "sixty seconds"
+  },
+  {
+    "tag": "course",
+    "raw": "grab oat milk from the corner store no wait almond milk",
+    "clean": "Grab almond milk from the corner store.",
+    "retract": "oat milk",
+    "target": "almond milk"
+  },
+  {
+    "tag": "course",
+    "raw": "schedule the dentist for ten am I mean eleven thirty",
+    "clean": "Schedule the dentist for eleven thirty.",
+    "retract": "ten am",
+    "target": "eleven thirty"
+  },
+  {
+    "tag": "course",
+    "raw": "write the unit tests in jest no wait in vitest",
+    "clean": "Write the unit tests in Vitest.",
+    "retract": "jest",
+    "target": "vitest"
+  },
+  {
+    "tag": "course",
+    "raw": "take the coastal highway to the cabin not the coastal, the inland route",
+    "clean": "Take the inland route to the cabin.",
+    "retract": "coastal highway",
+    "target": "inland route"
+  },
+  {
+    "tag": "course",
+    "raw": "simmer the sauce for twenty minutes scratch that forty minutes",
+    "clean": "Simmer the sauce for forty minutes.",
+    "retract": "twenty minutes",
+    "target": "forty minutes"
+  },
+  {
+    "tag": "light",
+    "raw": "um so yeah please water the ferns before you leave for work",
+    "clean": "Please water the ferns before you leave for work."
+  },
+  {
+    "tag": "light",
+    "raw": "i need to like renew my passport before the trip to lisbon",
+    "clean": "I need to renew my passport before the trip to Lisbon."
+  },
+  {
+    "tag": "light",
+    "raw": "the uh the bike chain is squeaking again after yesterday's ride",
+    "clean": "The bike chain is squeaking again after yesterday's ride."
+  },
+  {
+    "tag": "light",
+    "raw": "can you you know print the boarding passes tonight",
+    "clean": "Can you print the boarding passes tonight?"
+  },
+  {
+    "tag": "light",
+    "raw": "we should basically refactor the login form before the next sprint",
+    "clean": "We should refactor the login form before the next sprint."
+  },
+  {
+    "tag": "light",
+    "raw": "uh stir the risotto every couple of minutes until it's creamy",
+    "clean": "Stir the risotto every couple of minutes until it's creamy."
+  },
+  {
+    "tag": "light",
+    "raw": "i'll pick up the prescription at the pharmacy on my way home",
+    "clean": "I'll pick up the prescription at the pharmacy on my way home."
+  },
+  {
+    "tag": "light",
+    "raw": "the the rental car needs to be returned by noon on sunday",
+    "clean": "The rental car needs to be returned by noon on Sunday."
+  },
+  {
+    "tag": "light",
+    "raw": "please um file the expense report for the client dinner",
+    "clean": "Please file the expense report for the client dinner."
+  },
+  {
+    "tag": "light",
+    "raw": "like don't forget to charge the camera battery before the hike",
+    "clean": "Don't forget to charge the camera battery before the hike."
+  },
+  {
+    "tag": "light",
+    "raw": "deploy the hotfix after the database migration finishes",
+    "clean": "Deploy the hotfix after the database migration finishes."
+  },
+  {
+    "tag": "light",
+    "raw": "so yeah toast the walnuts lightly before you add them to the salad",
+    "clean": "Toast the walnuts lightly before you add them to the salad."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The ferry leaves the harbor at half past six sharp.",
+    "clean": "The ferry leaves the harbor at half past six sharp."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Marinate the chicken overnight in lemon, garlic, and oregano.",
+    "clean": "Marinate the chicken overnight in lemon, garlic, and oregano."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Close the pull request after the code review is complete.",
+    "clean": "Close the pull request after the code review is complete."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Pack a rain jacket; the mountain forecast looks unstable.",
+    "clean": "Pack a rain jacket; the mountain forecast looks unstable."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Return the library books before the late fees start.",
+    "clean": "Return the library books before the late fees start."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The bakery opens at seven and sells out of croissants by nine.",
+    "clean": "The bakery opens at seven and sells out of croissants by nine."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Document the edge cases in the README for the next maintainer.",
+    "clean": "Document the edge cases in the README for the next maintainer."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Confirm the hotel checkout time before we leave for the airport.",
+    "clean": "Confirm the hotel checkout time before we leave for the airport."
+  },
+  {
+    "tag": "course",
+    "raw": "Please book the conference room for forty-five minutes make that sixty and order lunch",
+    "clean": "Please book the conference room for 60 minutes and order lunch.",
+    "retract": "forty-five minutes",
+    "target": "60 minutes"
+  },
+  {
+    "tag": "course",
+    "raw": "Push the hotfix to staging I mean production after the smoke tests pass",
+    "clean": "Push the hotfix to production after the smoke tests pass.",
+    "retract": "staging",
+    "target": "production"
+  },
+  {
+    "tag": "course",
+    "raw": "List the two-bedroom at twenty-two hundred scratch that twenty-four hundred per month",
+    "clean": "List the 2-bedroom at 2400 per month.",
+    "retract": "twenty-two hundred",
+    "target": "2400"
+  },
+  {
+    "tag": "course",
+    "raw": "Pick up the kids at three no three thirty from the after school program",
+    "clean": "Pick up the kids at 3:30 from the after school program.",
+    "retract": "three",
+    "target": "3:30"
+  },
+  {
+    "tag": "course",
+    "raw": "Reschedule the client call from Monday no Tuesday at two make that three pm",
+    "clean": "Reschedule the client call from Tuesday at 3pm.",
+    "retract": "Monday; two",
+    "target": "Tuesday; 3pm"
+  },
+  {
+    "tag": "course",
+    "raw": "Merge the feature branch into develop scratch that into main before the freeze",
+    "clean": "Merge the feature branch into main before the freeze.",
+    "retract": "develop",
+    "target": "main"
+  },
+  {
+    "tag": "course",
+    "raw": "The lease starts June first I mean July first with first month free",
+    "clean": "The lease starts July 1 with first month free.",
+    "retract": "June first",
+    "target": "July 1"
+  },
+  {
+    "tag": "course",
+    "raw": "Sign the permission slip for the zoo trip make that the science museum trip",
+    "clean": "Sign the permission slip for the science museum trip.",
+    "retract": "the zoo trip",
+    "target": "the science museum trip"
+  },
+  {
+    "tag": "course",
+    "raw": "Send the Q three report to finance no accounting before end of day",
+    "clean": "Send the Q3 report to accounting before end of day.",
+    "retract": "finance",
+    "target": "accounting"
+  },
+  {
+    "tag": "course",
+    "raw": "Bump the API timeout to five seconds make that ten and redeploy the gateway",
+    "clean": "Bump the API timeout to 10 seconds and redeploy the gateway.",
+    "retract": "five seconds",
+    "target": "10 seconds"
+  },
+  {
+    "tag": "course",
+    "raw": "Show the condo on Elm no Oak Street at two scratch that three o'clock",
+    "clean": "Show the condo on Oak Street at 3 o'clock.",
+    "retract": "Elm; two",
+    "target": "Oak; 3 o'clock"
+  },
+  {
+    "tag": "course",
+    "raw": "Remind Maya her math homework is due Friday I mean Thursday this week",
+    "clean": "Remind Maya her math homework is due Thursday this week.",
+    "retract": "Friday",
+    "target": "Thursday"
+  },
+  {
+    "tag": "course",
+    "raw": "Block Friday afternoon for one-on-ones scratch that for the all-hands dry run",
+    "clean": "Block Friday afternoon for the all-hands dry run.",
+    "retract": "one-on-ones",
+    "target": "the all-hands dry run"
+  },
+  {
+    "tag": "course",
+    "raw": "Open a ticket for the login bug no the logout hang on iOS",
+    "clean": "Open a ticket for the logout hang on iOS.",
+    "retract": "the login bug",
+    "target": "the logout hang"
+  },
+  {
+    "tag": "course",
+    "raw": "Set the security deposit at one month make that one and a half months rent",
+    "clean": "Set the security deposit at 1.5 months rent.",
+    "retract": "one month",
+    "target": "1.5 months"
+  },
+  {
+    "tag": "course",
+    "raw": "Tell the teacher Emma is out Monday no Tuesday with a cold I mean flu",
+    "clean": "Tell the teacher Emma is out Tuesday with the flu.",
+    "retract": "Monday; a cold",
+    "target": "Tuesday; the flu"
+  },
+  {
+    "tag": "course",
+    "raw": "Fill the washer fluid with regular coolant scratch that just use distilled water",
+    "clean": "Fill the washer fluid with distilled water.",
+    "retract": "regular coolant",
+    "target": "distilled water"
+  },
+  {
+    "tag": "course",
+    "raw": "I ran five miles this morning actually make that six and a half",
+    "clean": "I ran 6.5 miles this morning.",
+    "retract": "five miles",
+    "target": "6.5 miles"
+  },
+  {
+    "tag": "course",
+    "raw": "Give the dog half a cup of dry food make that three quarters",
+    "clean": "Give the dog 3/4 cup of dry food.",
+    "retract": "half a cup",
+    "target": "3/4 cup"
+  },
+  {
+    "tag": "course",
+    "raw": "Mop the kitchen floor with bleach no use vinegar and warm water",
+    "clean": "Mop the kitchen floor with vinegar and warm water.",
+    "retract": "bleach",
+    "target": "vinegar and warm water"
+  },
+  {
+    "tag": "course",
+    "raw": "Replace the cabin filter every twelve months actually every six months",
+    "clean": "Replace the cabin filter every 6 months.",
+    "retract": "twelve months",
+    "target": "6 months"
+  },
+  {
+    "tag": "course",
+    "raw": "Do three sets of twelve squats scratch that make it fifteen reps",
+    "clean": "Do 3 sets of 15 squats.",
+    "retract": "twelve",
+    "target": "15"
+  },
+  {
+    "tag": "course",
+    "raw": "Book the cat for a flea bath no a dental cleaning next week",
+    "clean": "Book the cat for a dental cleaning next week.",
+    "retract": "a flea bath",
+    "target": "a dental cleaning"
+  },
+  {
+    "tag": "course",
+    "raw": "Vacuum the living room twice a week make that once every two weeks",
+    "clean": "Vacuum the living room once every 2 weeks.",
+    "retract": "twice a week",
+    "target": "once every 2 weeks"
+  },
+  {
+    "tag": "course",
+    "raw": "Check the tire pressure at thirty two psi actually thirty five is right",
+    "clean": "Check the tire pressure at 35 psi.",
+    "retract": "thirty two",
+    "target": "35"
+  },
+  {
+    "tag": "course",
+    "raw": "Start cardio at seven am no eight after the kids leave for school",
+    "clean": "Start cardio at 8am after the kids leave for school.",
+    "retract": "seven am",
+    "target": "8am"
+  },
+  {
+    "tag": "course",
+    "raw": "Walk the puppy for twenty minutes scratch that forty minutes after dinner",
+    "clean": "Walk the puppy for 40 minutes after dinner.",
+    "retract": "twenty minutes",
+    "target": "40 minutes"
+  },
+  {
+    "tag": "course",
+    "raw": "Wipe the counters with paper towels actually switch to microfiber cloths",
+    "clean": "Wipe the counters with microfiber cloths.",
+    "retract": "paper towels",
+    "target": "microfiber cloths"
+  },
+  {
+    "tag": "course",
+    "raw": "Change the oil every three thousand miles scratch that five thousand and use conventional no synthetic",
+    "clean": "Change the oil every 5000 miles and use synthetic.",
+    "retract": "three thousand; conventional",
+    "target": "5000; synthetic"
+  },
+  {
+    "tag": "course",
+    "raw": "Run intervals for twenty minutes actually thirty and do them daily no three times a week",
+    "clean": "Run intervals for 30 minutes and do them 3 times a week.",
+    "retract": "twenty minutes; daily",
+    "target": "30 minutes; 3 times a week"
+  },
+  {
+    "tag": "light",
+    "raw": "um so I need to pay the electric bill by uh the fifteenth",
+    "clean": "I need to pay the electric bill by the 15th."
+  },
+  {
+    "tag": "light",
+    "raw": "the rent is like twelve hundred and fifty this month you know",
+    "clean": "The rent is 1250 this month."
+  },
+  {
+    "tag": "light",
+    "raw": "I uh I transferred two hundred to savings yesterday",
+    "clean": "I transferred 200 to savings yesterday."
+  },
+  {
+    "tag": "light",
+    "raw": "um my credit card payment of three seventy-five is due Friday",
+    "clean": "My credit card payment of 375 is due Friday."
+  },
+  {
+    "tag": "light",
+    "raw": "uh can you fix the null pointer in the uh login handler",
+    "clean": "Can you fix the null pointer in the login handler?"
+  },
+  {
+    "tag": "light",
+    "raw": "I pushed the like I pushed the fix to the staging branch",
+    "clean": "I pushed the fix to the staging branch."
+  },
+  {
+    "tag": "light",
+    "raw": "um the unit tests failed after the uh schema migration",
+    "clean": "The unit tests failed after the schema migration."
+  },
+  {
+    "tag": "light",
+    "raw": "merge the the pull request once CI is green you know",
+    "clean": "Merge the pull request once CI is green."
+  },
+  {
+    "tag": "light",
+    "raw": "grab two gallons of milk and uh a loaf of sourdough",
+    "clean": "Grab 2 gallons of milk and a loaf of sourdough."
+  },
+  {
+    "tag": "light",
+    "raw": "I need to pick up the dry cleaning by like five pm",
+    "clean": "I need to pick up the dry cleaning by 5pm."
+  },
+  {
+    "tag": "light",
+    "raw": "um get eggs butter and uh three avocados if they look ripe",
+    "clean": "Get eggs, butter, and 3 avocados if they look ripe."
+  },
+  {
+    "tag": "light",
+    "raw": "stop at the pharmacy for the the prescription refill",
+    "clean": "Stop at the pharmacy for the prescription refill."
+  },
+  {
+    "tag": "light",
+    "raw": "um water the tomatoes every uh every two days this week",
+    "clean": "Water the tomatoes every 2 days this week."
+  },
+  {
+    "tag": "light",
+    "raw": "I need to repot the the basil into a larger container",
+    "clean": "I need to repot the basil into a larger container."
+  },
+  {
+    "tag": "light",
+    "raw": "uh prune the roses after the like after the first bloom fades",
+    "clean": "Prune the roses after the first bloom fades."
+  },
+  {
+    "tag": "light",
+    "raw": "mix in two cups of compost around the uh pepper plants",
+    "clean": "Mix in 2 cups of compost around the pepper plants."
+  },
+  {
+    "tag": "preserve",
+    "raw": "She tuned the violin for 15 minutes before the evening recital.",
+    "clean": "She tuned the violin for 15 minutes before the evening recital."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The bass player needs 4 new strings before Saturday night.",
+    "clean": "The bass player needs 4 new strings before Saturday night."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Our jazz trio rehearses every Tuesday at 7pm in the studio.",
+    "clean": "Our jazz trio rehearses every Tuesday at 7pm in the studio."
+  },
+  {
+    "tag": "preserve",
+    "raw": "He sold his acoustic guitar for 375 dollars last month.",
+    "clean": "He sold his acoustic guitar for 375 dollars last month."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The 2-bedroom apartment near downtown rents for 1850 a month.",
+    "clean": "The 2-bedroom apartment near downtown rents for 1850 a month."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Open house starts at 2pm and runs until 5pm today.",
+    "clean": "Open house starts at 2pm and runs until 5pm today."
+  },
+  {
+    "tag": "preserve",
+    "raw": "We signed a 12-month lease on the corner unit yesterday.",
+    "clean": "We signed a 12-month lease on the corner unit yesterday."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The landlord will fix the kitchen sink within 3 business days.",
+    "clean": "The landlord will fix the kitchen sink within 3 business days."
+  },
+  {
+    "tag": "preserve",
+    "raw": "My daughter has soccer practice at 4pm after school.",
+    "clean": "My daughter has soccer practice at 4pm after school."
+  },
+  {
+    "tag": "preserve",
+    "raw": "The class needs 28 permission slips returned by Friday morning.",
+    "clean": "The class needs 28 permission slips returned by Friday morning."
+  },
+  {
+    "tag": "preserve",
+    "raw": "He packed 6 snacks for the field trip next week.",
+    "clean": "He packed 6 snacks for the field trip next week."
+  },
+  {
+    "tag": "preserve",
+    "raw": "Parent conferences run from 3pm to 8pm on Thursday.",
+    "clean": "Parent conferences run from 3pm to 8pm on Thursday."
+  }
+]

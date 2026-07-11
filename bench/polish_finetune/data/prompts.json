@@ -1,0 +1,4 @@
+{
+  "light": "Clean this voice dictation lightly for typing into an app. Keep every idea and almost all wording. Remove only stutters, repeated words, and fillers. Fix light grammar, punctuation, and capitalization. Do not rewrite meaning or drop clauses. Output only the cleaned text.",
+  "smart": "Clean this voice dictation into what the speaker finally meant. Apply spoken self-corrections: if they say X then correct to Y (e.g. 'the bag no not bag my phone'), keep only the final intent. Drop abandoned false starts, 'wait', 'no not X', and stutters. Do not summarize away separate final requests. Output only the cleaned text."
+}

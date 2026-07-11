@@ -1,0 +1,16 @@
+# Trained adapters are large binaries and regenerate in ~40s from scripts.
+adapters/
+__pycache__/
+
+# Regenerable dataset splits / generated pools (rebuild via gen_pairs.py +
+# build_ft_from_pool.py). Keep the frozen eval + seed sources below.
+data/sotto_ft/
+data/sotto_ft_v2/
+data/light/
+data/smart/
+*_pool*.jsonl
+holdout_extra.jsonl
+
+# Keep for reproducibility (NOT ignored):
+#   *.py, RECIPE.md, data/holdout_eval*.json, data/*_seed.json,
+#   data/teacher_pairs*, data/prompts.json, data/course_correction_*.json
