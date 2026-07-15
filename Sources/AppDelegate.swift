@@ -46,17 +46,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Automated smoke test: --self-test
-        if CommandLine.arguments.contains("--self-test") {
-            runSelfTest()
+    }
+
+    /// Entry for `--self-test` (scheduled from `MacWisprApp` after menu bar install).
+    func beginSelfTest() {
+        Task { @MainActor in
+            await runSelfTest()
         }
     }
 
     /// Verifies status item, model load, hold/toggle API, and ⌥Space hotkey path.
-    private func runSelfTest() {
-        Task { @MainActor in
+    @MainActor
+    private func runSelfTest() async {
             var failures: [String] = []
-            print("MacWispr self-test starting…")
+            NSLog("MacWispr self-test starting…")
             print("AXIsProcessTrusted:", AXIsProcessTrusted())
 
             // 1. Status item
@@ -161,13 +164,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             if failures.isEmpty {
-                print("MacWispr self-test: ALL PASSED")
+                NSLog("MacWispr self-test: ALL PASSED")
                 exit(0)
             } else {
-                print("MacWispr self-test: FAILED \(failures)")
+                NSLog("MacWispr self-test: FAILED \(failures)")
                 exit(1)
             }
-        }
     }
 
     /// Retries until AppState is available.

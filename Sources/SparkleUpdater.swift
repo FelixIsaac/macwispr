@@ -14,6 +14,10 @@ final class SparkleUpdater {
     private(set) var controller: SPUStandardUpdaterController?
 
     private init() {
+        if CommandLine.arguments.contains("--self-test") {
+            NSLog("MacWispr: Sparkle skipped (--self-test)")
+            return
+        }
         guard let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
               !feed.isEmpty,
               !feed.contains("example.com")

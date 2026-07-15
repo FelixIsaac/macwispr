@@ -9,6 +9,7 @@ struct MacWisprApp: App {
     /// Status item must be installed **once**. Side-effect in `body` re-ran on
     /// every scene invalidation and rebuilt the popover host → ghosted UI.
     private static var didInstallMenuBar = false
+    private static var didScheduleSelfTest = false
 
     var body: some Scene {
         let _ = Self.installMenuBarIfNeeded(appDelegate: appDelegate, appState: appState)
@@ -40,6 +41,15 @@ struct MacWisprApp: App {
         guard !didInstallMenuBar else { return }
         didInstallMenuBar = true
         StatusBarController.shared.install(appState: appState)
+
+        // Settings-only Scene defers SwiftUI runtime activation; kick self-test after
+        // menu bar install so the MainActor Task actually runs (headless CI smoke).
+        if CommandLine.arguments.contains("--self-test"), !didScheduleSelfTest {
+            didScheduleSelfTest = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                AppDelegate.shared?.beginSelfTest()
+            }
+        }
     }
 
     private func openDashboardSettings() {
