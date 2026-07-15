@@ -101,11 +101,11 @@ struct MenuBarView: View {
                         .textSelection(.enabled)
                     HStack(spacing: 8) {
                         Button("Copy") {
-                            appState.copyLastTranscription()
+                            Task { @MainActor in appState.copyLastTranscription() }
                         }
                         .controlSize(.small)
                         Button("Paste again") {
-                            appState.repasteLastTranscription()
+                            Task { @MainActor in appState.repasteLastTranscription() }
                         }
                         .controlSize(.small)
                         Spacer()
@@ -202,7 +202,7 @@ struct MenuBarView: View {
                 .padding(.vertical, 6)
                 .padding(.horizontal, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
     }
 
     private func openMainWindow() {

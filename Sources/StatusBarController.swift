@@ -19,6 +19,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var appState: AppState?
     private var cancellables = Set<AnyCancellable>()
     private var didInstall = false
+    /// Headless smoke test — keep status item, disable popover clicks (#21).
+    private var isSelfTestMode = false
     /// Event monitor so transient popover dismiss stays reliable.
     private var localEventMonitor: Any?
 
@@ -33,6 +35,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// Idempotent. Safe if SwiftUI re-evaluates the App scene body.
     func install(appState: AppState) {
         self.appState = appState
+        isSelfTestMode = CommandLine.arguments.contains("--self-test")
 
         if !didInstall {
             didInstall = true
@@ -56,10 +59,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             button.image = Self.symbolImage(phase: .ready, tinted: false)
             button.imagePosition = .imageOnly
             button.toolTip = "MacWispr — Hold ⌥Space to dictate"
-            button.target = self
-            button.action = #selector(statusItemClicked(_:))
-            // Left-click only — dual mouse-up can double-toggle the popover.
-            button.sendAction(on: [.leftMouseUp])
+            if !isSelfTestMode {
+                button.target = self
+                button.action = #selector(statusItemClicked(_:))
+                // Left-click only — dual mouse-up can double-toggle the popover.
+                button.sendAction(on: [.leftMouseUp])
+            } else {
+                button.toolTip = "MacWispr — self-test (menu disabled)"
+            }
         }
         statusItem = item
     }
