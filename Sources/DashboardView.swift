@@ -44,8 +44,7 @@ struct DashboardView: View {
                 Section("Local") {
                     ForEach(ASRModelSize.dashboardChoices) { size in
                         Button {
-                            appState.setTranscriptionProvider(.local)
-                            appState.setASRModelSize(size)
+                            selectLocalModel(size)
                         } label: {
                             if isSelectedLocalModel(size) {
                                 Label(size.displayName, systemImage: "checkmark")
@@ -58,7 +57,7 @@ struct DashboardView: View {
                 }
                 Section("Cloud (BYOK)") {
                     Button {
-                        appState.setTranscriptionProvider(.openAI)
+                        selectCloudProvider(.openAI)
                     } label: {
                         if appState.transcriptionProvider == .openAI {
                             Label("OpenAI", systemImage: "checkmark")
@@ -67,7 +66,7 @@ struct DashboardView: View {
                         }
                     }
                     Button {
-                        appState.setTranscriptionProvider(.elevenLabs)
+                        selectCloudProvider(.elevenLabs)
                     } label: {
                         if appState.transcriptionProvider == .elevenLabs {
                             Label("ElevenLabs", systemImage: "checkmark")
@@ -96,7 +95,7 @@ struct DashboardView: View {
                 .padding(.vertical, 6)
                 .background(.quaternary.opacity(0.7), in: Capsule())
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
             .fixedSize()
             .disabled(appState.isRecording)
             .help(modelChipHelp)
@@ -159,6 +158,21 @@ struct DashboardView: View {
             return appState.asrModelSize.shortName
         case .openAI, .elevenLabs:
             return "Cloud · BYOK"
+        }
+    }
+
+    /// Menu actions hop to the main actor explicitly — avoids SIGSEGV in
+    /// `_ButtonGesture` / `MainActor.assumeIsolated` on macOS 26 (#21).
+    private func selectLocalModel(_ size: ASRModelSize) {
+        Task { @MainActor in
+            appState.setTranscriptionProvider(.local)
+            appState.setASRModelSize(size)
+        }
+    }
+
+    private func selectCloudProvider(_ provider: TranscriptionProvider) {
+        Task { @MainActor in
+            appState.setTranscriptionProvider(provider)
         }
     }
 

@@ -17,10 +17,12 @@ struct MainWindowView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    if appState.isRecording {
-                        Task { await appState.stopRecordingAndTranscribe() }
-                    } else if appState.isReadyToDictate {
-                        appState.startRecording()
+                    Task { @MainActor in
+                        if appState.isRecording {
+                            await appState.stopRecordingAndTranscribe()
+                        } else if appState.isReadyToDictate {
+                            appState.startRecording()
+                        }
                     }
                 } label: {
                     Image(systemName: appState.isRecording ? "stop.circle.fill" : "mic.circle.fill")

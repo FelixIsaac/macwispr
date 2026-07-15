@@ -3,6 +3,7 @@ import AppKit
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
+    @State private var selectedTab: SettingsTab = .general
     @State private var newVocabTerm: String = ""
     @State private var openAIKeyDraft: String = ""
     @State private var elevenLabsKeyDraft: String = ""
@@ -33,20 +34,52 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        TabView {
-            generalSettings
-                .tabItem { Label("General", systemImage: "gear") }
+        // Pure SwiftUI tab bar — avoids AppKitTabView/NSTabView SIGSEGV on macOS 26 (#22).
+        VStack(spacing: 0) {
+            settingsTabBar
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
 
-            transcriptionSettings
-                .tabItem { Label("Transcription", systemImage: "text.bubble") }
-
-            hotkeySettings
-                .tabItem { Label("Hotkeys", systemImage: "keyboard") }
-
-            aboutView
-                .tabItem { Label("About", systemImage: "info.circle") }
+            Group {
+                switch selectedTab {
+                case .general:
+                    generalSettings
+                case .transcription:
+                    transcriptionSettings
+                case .hotkeys:
+                    hotkeySettings
+                case .about:
+                    aboutView
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.top, 8)
+    }
+
+    private var settingsTabBar: some View {
+        HStack(spacing: 4) {
+            ForEach(SettingsTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Label(tab.title, systemImage: tab.symbol)
+                        .font(.caption.weight(selectedTab == tab ? .semibold : .regular))
+                        .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            selectedTab == tab
+                                ? Color.accentColor.opacity(0.12)
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var generalSettings: some View {
@@ -394,7 +427,6 @@ struct SettingsView: View {
                         Text(mode.rawValue).tag(mode)
                     }
                 }
-                .pickerStyle(.segmented)
 
                 Text(appState.dictationMode.help)
                     .font(.caption)
@@ -654,6 +686,33 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+        }
+    }
+}
+
+private enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case transcription
+    case hotkeys
+    case about
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: return "General"
+        case .transcription: return "Transcription"
+        case .hotkeys: return "Hotkeys"
+        case .about: return "About"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: return "gear"
+        case .transcription: return "text.bubble"
+        case .hotkeys: return "keyboard"
+        case .about: return "info.circle"
         }
     }
 }

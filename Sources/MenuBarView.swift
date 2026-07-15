@@ -28,7 +28,7 @@ struct MenuBarView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Fix") {
-                        appState.repairHotkey()
+                        Task { @MainActor in appState.repairHotkey() }
                     }
                     .font(.caption)
                 }
@@ -180,9 +180,11 @@ struct MenuBarView: View {
                         .foregroundStyle(.tertiary)
                 }
                 Button("Open Setup") {
-                    StatusBarController.shared.closePopover()
-                    appState.reopenOnboarding()
-                    openMainWindow()
+                    Task { @MainActor in
+                        StatusBarController.shared.closePopover()
+                        appState.reopenOnboarding()
+                        openMainWindow()
+                    }
                 }
                 .controlSize(.small)
             }
@@ -190,8 +192,10 @@ struct MenuBarView: View {
         .padding(.horizontal)
     }
 
-    private func menuRow(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func menuRow(title: String, systemImage: String, action: @escaping @MainActor () -> Void) -> some View {
+        Button {
+            Task { @MainActor in action() }
+        } label: {
             Label(title, systemImage: systemImage)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
