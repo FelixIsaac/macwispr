@@ -67,6 +67,12 @@ final class AppState: ObservableObject {
     @Published var hasElevenLabsKey = false
     @Published var openAIKeyMasked: String = ""
     @Published var elevenLabsKeyMasked: String = ""
+    /// Grok CLI session present on this Mac (`~/.grok/auth.json`).
+    @Published var hasGrokSession = false
+    /// User consented to use Grok SuperGrok STT (local preference only).
+    @Published var grokSTTConsented = false
+    /// Masked identity from Grok auth (email if present).
+    @Published var grokSessionLabel: String = ""
     @Published var currentTranscription: String = ""
     @Published var transcriptionHistory: [TranscriptionEntry] = []
     @Published var selectedLanguage: String? = nil
@@ -183,6 +189,14 @@ final class AppState: ObservableObject {
     private var livePartialInFlight = false
     /// PCM sample count that produced the last accepted live draft (for release fast-path).
     private var lastLivePartialSampleCount = 0
+    /// Live Grok streaming STT session (mic-open WebSocket, like Grok Build).
+    private var grokStreamSession: GrokStreamingSession?
+    /// Pump task: snapshot mic → send PCM deltas + receive display updates.
+    private var grokStreamPumpTask: Task<Void, Never>?
+    /// How many float samples have already been sent on the live Grok socket.
+    private var grokStreamSentSamples = 0
+    /// True while Grok stream is connecting / finishing (release can await it).
+    private var grokStreamBusy = false
     private static let historySaveDebounceNs: UInt64 = 750_000_000 // 0.75s
     /// How often to re-transcribe the growing buffer while listening.
     private static let livePartialIntervalNs: UInt64 = 1_100_000_000 // 1.1s
@@ -217,6 +231,8 @@ final class AppState: ObservableObject {
             return hasOpenAIKey
         case .elevenLabs:
             return hasElevenLabsKey
+        case .grok:
+            return hasGrokSession && grokSTTConsented
         }
     }
 
@@ -230,6 +246,10 @@ final class AppState: ObservableObject {
             return hasOpenAIKey ? "Ready · OpenAI" : "Add OpenAI API key"
         case .elevenLabs:
             return hasElevenLabsKey ? "Ready · ElevenLabs" : "Add ElevenLabs API key"
+        case .grok:
+            if !hasGrokSession { return "Run grok login" }
+            if !grokSTTConsented { return "Enable Grok in Settings" }
+            return "Ready · Grok"
         }
     }
 
@@ -430,6 +450,12 @@ final class AppState: ObservableObject {
         syncAudioInputDevice()
         refreshInputDevices()
         refreshKeyPresence()
+        refreshGrokSession()
+        // If a previous run selected Grok but consent/session is gone, fall back to local.
+        if transcriptionProvider == .grok, !isReadyToDictate {
+            transcriptionProvider = .local
+            UserDefaults.standard.set(TranscriptionProvider.local.rawValue, forKey: Self.transcriptionProviderKey)
+        }
         syncIdlePhase()
         setupHotkey()
         Task { await prepareActiveProvider() }
@@ -441,6 +467,66 @@ final class AppState: ObservableObject {
             self?.emitHotkeyHealthIfNeeded()
             self?.syncIdlePhase()
             self?.syncLeaderboardIfNeeded(force: false)
+            self?.maybeOfferGrokConsent()
+        }
+    }
+
+    // MARK: - Grok SuperGrok STT (local CLI session)
+
+    func refreshGrokSession() {
+        hasGrokSession = GrokOAuthStore.isInstalled
+        grokSTTConsented = GrokOAuthStore.hasAcceptedConsent
+        grokSessionLabel = GrokOAuthStore.maskedIdentity() ?? ""
+    }
+
+    /// One-shot alert when this Mac has `~/.grok/auth.json` and the user hasn't decided yet.
+    func maybeOfferGrokConsent() {
+        guard !CommandLine.arguments.contains("--self-test") else { return }
+        refreshGrokSession()
+        guard GrokOAuthStore.shouldOfferConsent else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Use Grok for voice dictation?"
+        alert.informativeText = """
+            MacWispr found your Grok CLI login on this Mac\(grokSessionLabel.isEmpty ? "" : " (\(grokSessionLabel))").
+
+            Use your SuperGrok session for cloud speech-to-text? No API key needed. Audio is sent to xAI only while dictating — same STT Grok Build uses.
+
+            You can switch back to Local anytime in Settings.
+            """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Use Grok")
+        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: "Don’t Ask Again")
+
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn:
+            acceptGrokSTTConsent(switchProvider: true)
+        case .alertSecondButtonReturn:
+            // Defer: can re-offer next launch until Don't Ask Again.
+            break
+        default:
+            GrokOAuthStore.declineConsent(dontAskAgain: true)
+            refreshGrokSession()
+        }
+    }
+
+    func acceptGrokSTTConsent(switchProvider: Bool) {
+        GrokOAuthStore.acceptConsent()
+        refreshGrokSession()
+        if switchProvider {
+            setTranscriptionProvider(.grok)
+        } else if transcriptionProvider == .grok {
+            Task { await prepareActiveProvider() }
+        }
+    }
+
+    func revokeGrokSTTConsent() {
+        GrokOAuthStore.declineConsent(dontAskAgain: true)
+        refreshGrokSession()
+        if transcriptionProvider == .grok {
+            setTranscriptionProvider(.local)
         }
     }
 
@@ -633,6 +719,7 @@ final class AppState: ObservableObject {
     func setTranscriptionProvider(_ provider: TranscriptionProvider) {
         guard provider != transcriptionProvider else { return }
         if isRecording {
+            stopGrokLiveStream(cancelRemote: true)
             _ = audioRecorder.stopRecording()
             isRecording = false
             recordingSession += 1
@@ -690,6 +777,7 @@ final class AppState: ObservableObject {
     /// Marks cloud providers ready when a key exists; loads local model otherwise.
     /// Leaving `.local` unloads in-memory ASR weights (disk cache is kept).
     func prepareActiveProvider() async {
+        refreshGrokSession()
         switch transcriptionProvider {
         case .local:
             await loadModel()
@@ -714,6 +802,22 @@ final class AppState: ObservableObject {
             } else {
                 isModelLoaded = false
                 modelLoadStatus = "Add ElevenLabs API key in Settings"
+                modelLoadProgress = 0
+            }
+            syncIdlePhase()
+        case .grok:
+            await unloadLocalModelForProviderSwitch()
+            if hasGrokSession && grokSTTConsented {
+                isModelLoaded = true
+                modelLoadStatus = "Ready · Grok"
+                modelLoadProgress = 1
+            } else if !hasGrokSession {
+                isModelLoaded = false
+                modelLoadStatus = "Run `grok login` in Terminal"
+                modelLoadProgress = 0
+            } else {
+                isModelLoaded = false
+                modelLoadStatus = "Enable Grok STT in Settings"
                 modelLoadProgress = 0
             }
             syncIdlePhase()
@@ -853,6 +957,7 @@ final class AppState: ObservableObject {
         recordingSession += 1
         livePartialTask?.cancel()
         livePartialTask = nil
+        stopGrokLiveStream(cancelRemote: true)
         _ = audioRecorder.stopRecording()
         isRecording = false
         stopElapsedTimer()
@@ -1052,8 +1157,140 @@ final class AppState: ObservableObject {
             // Always re-apply the user’s mic choice before opening the engine.
             syncAudioInputDevice()
             audioRecorder.startRecording()
-            // Live partials while the mic is open (local Qwen + Parakeet).
-            startLivePartialLoop(session: session)
+            // Live partials: local = batch re-runs; Grok = real streaming STT (Grok Build).
+            if transcriptionProvider == .grok {
+                startGrokLiveStream(session: session)
+            } else {
+                startLivePartialLoop(session: session)
+            }
+        }
+    }
+
+    // MARK: - Grok live streaming STT (Grok Build protocol)
+
+    /// Open `wss://api.x.ai/v1/stt` as soon as the mic opens, stream PCM, paint interim
+    /// text into the HUD while the user speaks — same feel as Grok Build Ctrl+Space.
+    private func startGrokLiveStream(session: Int) {
+        stopGrokLiveStream(cancelRemote: true)
+        // Always stream for Grok — live typing is the whole point (Grok Build feel).
+
+        grokStreamSentSamples = 0
+        grokStreamBusy = true
+        let language = selectedLanguage
+
+        grokStreamPumpTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let stream: GrokStreamingSession
+            do {
+                let bearer = try await GrokOAuthStore.resolveBearer()
+                stream = try await GrokStreamingSession.connect(
+                    bearer: bearer,
+                    language: language,
+                    onEvent: { [weak self] event in
+                        Task { @MainActor in
+                            self?.handleGrokStreamEvent(event, session: session)
+                        }
+                    }
+                )
+            } catch {
+                self.grokStreamBusy = false
+                // Don't fail the dictation mid-hold — release will batch-fallback.
+                NSLog("MacWispr Grok live connect failed: \(error.localizedDescription)")
+                return
+            }
+
+            guard self.isRecording, self.recordingSession == session else {
+                await stream.cancel()
+                self.grokStreamBusy = false
+                return
+            }
+            self.grokStreamSession = stream
+            self.grokStreamBusy = false
+
+            // Feed new PCM every ~80 ms (Grok Build streams continuously).
+            while !Task.isCancelled {
+                guard self.isRecording, self.recordingSession == session else { break }
+                guard self.dictationPhase == .listening else { break }
+
+                let snap = self.audioRecorder.snapshotSamples()
+                if snap.count > self.grokStreamSentSamples {
+                    let start = self.grokStreamSentSamples
+                    let delta = Array(snap[start..<snap.count])
+                    self.grokStreamSentSamples = snap.count
+                    await stream.sendSamples(delta)
+                }
+
+                try? await Task.sleep(nanoseconds: 80_000_000)
+            }
+        }
+    }
+
+    private func handleGrokStreamEvent(_ event: GrokSTTEvent, session: Int) {
+        // Accept updates for this hold, or the brief release window (session + 1).
+        let stillThisSession = recordingSession == session || recordingSession == session + 1
+        guard stillThisSession else { return }
+
+        switch event {
+        case .display(let text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            currentTranscription = trimmed
+            lastLivePartialSampleCount = grokStreamSentSamples
+            if dictationPhase == .listening || dictationPhase == .transcribing {
+                phaseDetail = trimmed
+                ListeningHUDController.shared.sync(with: self)
+            }
+        case .error(let message):
+            NSLog("MacWispr Grok stream error: \(message)")
+            // Keep mic open; release may still get a partial or batch fallback.
+        }
+    }
+
+    /// Stop the PCM pump. If `cancelRemote`, abort the WebSocket (cancel hotkey).
+    /// On normal release we leave the session open for `finishGrokLiveStream`.
+    private func stopGrokLiveStream(cancelRemote: Bool) {
+        grokStreamPumpTask?.cancel()
+        grokStreamPumpTask = nil
+        if cancelRemote {
+            let session = grokStreamSession
+            grokStreamSession = nil
+            grokStreamBusy = false
+            if let session {
+                Task { await session.cancel() }
+            }
+        }
+    }
+
+    /// Flush remaining PCM, send `audio.done`, wait for trailing final (Grok Build stop).
+    private func finishGrokLiveStream(finalSamples: [Float]) async -> String? {
+        // Stop the pump so we don't race sendSamples.
+        grokStreamPumpTask?.cancel()
+        grokStreamPumpTask = nil
+
+        // Wait briefly if connect is still in flight.
+        let deadline = DispatchTime.now().uptimeNanoseconds + 3_000_000_000
+        while grokStreamBusy && grokStreamSession == nil {
+            if DispatchTime.now().uptimeNanoseconds >= deadline { break }
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        }
+
+        guard let stream = grokStreamSession else { return nil }
+        grokStreamSession = nil
+
+        // Send any tail the pump didn't flush (release race).
+        if finalSamples.count > grokStreamSentSamples {
+            let delta = Array(finalSamples[grokStreamSentSamples..<finalSamples.count])
+            grokStreamSentSamples = finalSamples.count
+            await stream.sendSamples(delta)
+        }
+
+        do {
+            let text = try await stream.finish()
+            return text
+        } catch {
+            NSLog("MacWispr Grok finish failed: \(error.localizedDescription)")
+            let draft = currentTranscription.trimmingCharacters(in: .whitespacesAndNewlines)
+            return draft.isEmpty ? nil : draft
         }
     }
 
@@ -1129,6 +1366,8 @@ final class AppState: ObservableObject {
         livePartialTask = nil
         // Leave `livePartialInFlight` alone — an in-flight ASR call clears it
         // when done so release can await a fresher draft before pasting.
+        // Grok: stop the PCM pump only; `finishGrokLiveStream` closes the socket.
+        stopGrokLiveStream(cancelRemote: false)
     }
 
     /// Wait briefly for an in-flight live partial so we can paste it instead of
@@ -1144,7 +1383,8 @@ final class AppState: ObservableObject {
     /// Prefer the live HUD draft when almost no new audio arrived after it.
     private func shouldReuseLiveDraft(draft: String, totalSamples: Int) -> Bool {
         guard !draft.isEmpty else { return false }
-        guard transcriptionProvider == .local else { return false }
+        // Local batch re-runs + Grok streaming both leave a trustworthy draft.
+        guard transcriptionProvider == .local || transcriptionProvider == .grok else { return false }
         guard lastLivePartialSampleCount >= Self.livePartialMinSamples else { return false }
         let newSamples = totalSamples - lastLivePartialSampleCount
         // Draft covered nearly the whole buffer (or was slightly ahead of stop).
@@ -1166,6 +1406,7 @@ final class AppState: ObservableObject {
         }
 
         guard !samples.isEmpty else {
+            stopGrokLiveStream(cancelRemote: true)
             reportEmptyAudioFailure()
             presentFailure("No audio captured — hold longer, or check Microphone permission.")
             return
@@ -1194,22 +1435,43 @@ final class AppState: ObservableObject {
         let sttStarted = Date()
         do {
             let text: String
-            let reusedLiveDraft = shouldReuseLiveDraft(draft: draft, totalSamples: samples.count)
-            if reusedLiveDraft {
-                // Fast path: HUD already showed this text — paste without re-STT.
-                text = draft
-                NSLog(
-                    "MacWispr: release using live draft (new samples=%d ≤ %d)",
-                    samples.count - lastLivePartialSampleCount,
-                    Self.liveDraftReuseMaxNewSamples
-                )
-            } else {
-                // Buffer grew after last draft (or no draft) — full final pass.
-                if !draft.isEmpty {
-                    setPhase(.transcribing, detail: draft)
-                    ListeningHUDController.shared.sync(with: self)
+            if transcriptionProvider == .grok {
+                // Grok Build path: flush tail + audio.done on the live socket.
+                // Prefer the streaming final (already painted partials feel instant).
+                if let streamed = await finishGrokLiveStream(finalSamples: samples),
+                   !streamed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    text = streamed
+                    NSLog("MacWispr: Grok live stream final (%d chars)", text.count)
+                } else if shouldReuseLiveDraft(draft: draft, totalSamples: samples.count) {
+                    text = draft
+                    NSLog("MacWispr: Grok release using live draft")
+                } else {
+                    // Connect failed mid-hold — one-shot batch fallback.
+                    if !draft.isEmpty {
+                        setPhase(.transcribing, detail: draft)
+                        ListeningHUDController.shared.sync(with: self)
+                    }
+                    text = try await transcribeSamples(samples)
                 }
-                text = try await transcribeSamples(samples)
+            } else {
+                let reusedLiveDraft = shouldReuseLiveDraft(draft: draft, totalSamples: samples.count)
+                if reusedLiveDraft {
+                    // Fast path: HUD already showed this text — paste without re-STT.
+                    text = draft
+                    NSLog(
+                        "MacWispr: release using live draft (new samples=%d ≤ %d)",
+                        samples.count - lastLivePartialSampleCount,
+                        Self.liveDraftReuseMaxNewSamples
+                    )
+                } else {
+                    // Buffer grew after last draft (or no draft) — full final pass.
+                    if !draft.isEmpty {
+                        setPhase(.transcribing, detail: draft)
+                        ListeningHUDController.shared.sync(with: self)
+                    }
+                    text = try await transcribeSamples(samples)
+                }
             }
             let sttLatency = Date().timeIntervalSince(sttStarted)
             let afterLight = postProcess(text)
@@ -1402,6 +1664,9 @@ final class AppState: ObservableObject {
         case .elevenLabs:
             providerToken = "cloud"
             modelSizeToken = "elevenlabs"
+        case .grok:
+            providerToken = "cloud"
+            modelSizeToken = "grok"
         }
 
         let insertionToken: String
@@ -1483,6 +1748,16 @@ final class AppState: ObservableObject {
                 apiKey: key,
                 language: selectedLanguage,
                 keyterms: customVocabulary
+            )
+        case .grok:
+            guard GrokOAuthStore.hasAcceptedConsent else {
+                throw CloudSTTError.notConfigured
+            }
+            let bearer = try await GrokOAuthStore.resolveBearer()
+            return try await GrokSTTClient.transcribe(
+                samples: samples,
+                bearer: bearer,
+                language: selectedLanguage
             )
         }
     }

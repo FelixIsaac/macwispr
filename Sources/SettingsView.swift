@@ -869,11 +869,46 @@ struct SettingsView: View {
                     get: { appState.transcriptionProvider },
                     set: { appState.setTranscriptionProvider($0) }
                 )) {
-                    ForEach(TranscriptionProvider.allCases) { provider in
+                    ForEach(TranscriptionProvider.selectableCases) { provider in
                         Text(provider.displayName).tag(provider)
                     }
                 }
                 .disabled(appState.isRecording)
+                .onAppear { appState.refreshGrokSession() }
+
+                if appState.transcriptionProvider == .grok {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if appState.hasGrokSession {
+                            Text(appState.grokSessionLabel.isEmpty
+                                  ? "Grok CLI session found on this Mac"
+                                  : "Signed in as \(appState.grokSessionLabel)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("No Grok login found. In Terminal run: grok login")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        Text(TranscriptionProvider.grok.help)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        HStack {
+                            if !appState.grokSTTConsented {
+                                Button("Enable Grok STT") {
+                                    appState.acceptGrokSTTConsent(switchProvider: true)
+                                }
+                                .disabled(!appState.hasGrokSession || appState.isRecording)
+                            } else {
+                                Button("Disable Grok STT", role: .destructive) {
+                                    appState.revokeGrokSTTConsent()
+                                }
+                                .disabled(appState.isRecording)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
 
                 if appState.transcriptionProvider == .openAI {
                     DisclosureGroup("OpenAI API key") {

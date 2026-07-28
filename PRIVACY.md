@@ -2,7 +2,7 @@
 
 MacWispr is built to keep your voice and text on your Mac whenever possible.
 
-By default, **local** transcription (Qwen3-ASR via MLX) runs entirely on-device. Optional cloud STT (OpenAI / ElevenLabs) only runs if you choose a cloud provider and supply your own API key (BYOK). Keys stay in the macOS Keychain.
+By default, **local** transcription (Qwen3-ASR via MLX) runs entirely on-device. Optional cloud STT runs only if you choose it: **BYOK** (OpenAI / ElevenLabs API keys in Keychain) or **Grok** (after you consent, using your existing Grok CLI / SuperGrok session on this Mac).
 
 ## Optional product telemetry
 
@@ -100,9 +100,10 @@ If you need data removed for a specific install ID, open a GitHub issue or conta
 |------|------------------------------|
 | **Local** (default) | No — ASR runs on Apple Silicon via MLX |
 | **Cloud BYOK** (OpenAI / ElevenLabs) | Yes — audio (and polish text, if enabled) go to the provider you chose, under **your** API key and their privacy policy |
+| **Grok (SuperGrok)** | Yes — only after **explicit consent**. Audio is streamed to xAI speech-to-text using your Grok CLI OAuth session (`~/.grok/auth.json`). Counted against your SuperGrok usage entitlement, not MacWispr servers. No API key is copied into MacWispr’s Keychain. |
 | **Transcript history / dashboard** | Stored locally under Application Support on your Mac |
 
-Turning telemetry on does **not** change where transcription runs. Local stays local.
+Turning telemetry on does **not** change where transcription runs. Local stays local. Grok STT is never enabled silently.
 
 ---
 

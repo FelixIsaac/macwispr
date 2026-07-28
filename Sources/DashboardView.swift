@@ -259,6 +259,24 @@ struct DashboardView: View {
                         }
                     }
                 }
+                if appState.hasGrokSession || appState.grokSTTConsented {
+                    Section("Grok") {
+                        Button {
+                            if appState.grokSTTConsented {
+                                appState.setTranscriptionProvider(.grok)
+                            } else {
+                                appState.acceptGrokSTTConsent(switchProvider: true)
+                            }
+                        } label: {
+                            if appState.transcriptionProvider == .grok {
+                                Label("Grok (SuperGrok)", systemImage: "checkmark")
+                            } else {
+                                Text("Grok (SuperGrok)")
+                            }
+                        }
+                        .disabled(!appState.hasGrokSession && !appState.grokSTTConsented)
+                    }
+                }
             } label: {
                 HStack(spacing: 6) {
                     if appState.isModelLoading && appState.transcriptionProvider == .local {
@@ -290,8 +308,12 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 200, alignment: .trailing)
-            } else if !appState.isReadyToDictate, appState.transcriptionProvider != .local {
+            } else if !appState.isReadyToDictate, appState.transcriptionProvider == .openAI || appState.transcriptionProvider == .elevenLabs {
                 Text("Add API key in Settings")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            } else if !appState.isReadyToDictate, appState.transcriptionProvider == .grok {
+                Text(appState.hasGrokSession ? "Enable Grok in Settings" : "Run grok login")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             } else {
@@ -312,6 +334,8 @@ struct DashboardView: View {
             return "OpenAI"
         case .elevenLabs:
             return "ElevenLabs"
+        case .grok:
+            return "Grok"
         }
     }
 
@@ -319,7 +343,7 @@ struct DashboardView: View {
         switch appState.transcriptionProvider {
         case .local:
             return "laptopcomputer"
-        case .openAI, .elevenLabs:
+        case .openAI, .elevenLabs, .grok:
             return "cloud"
         }
     }
@@ -332,6 +356,9 @@ struct DashboardView: View {
             return "Cloud STT via your OpenAI key"
         case .elevenLabs:
             return "Cloud STT via your ElevenLabs key"
+        case .grok:
+            let who = appState.grokSessionLabel.isEmpty ? "Grok CLI session" : appState.grokSessionLabel
+            return "Cloud STT via SuperGrok (\(who))"
         }
     }
 
@@ -342,6 +369,8 @@ struct DashboardView: View {
             return appState.asrModelSize.shortName
         case .openAI, .elevenLabs:
             return "Cloud · BYOK"
+        case .grok:
+            return "Cloud · SuperGrok"
         }
     }
 

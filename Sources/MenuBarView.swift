@@ -177,8 +177,12 @@ struct MenuBarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                if appState.transcriptionProvider != .local {
+                if appState.transcriptionProvider == .openAI || appState.transcriptionProvider == .elevenLabs {
                     Text("Add your API key in Settings")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } else if appState.transcriptionProvider == .grok, !appState.hasGrokSession {
+                    Text("Run grok login in Terminal")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
