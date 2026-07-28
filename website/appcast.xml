@@ -17,6 +17,30 @@
     <language>en</language>
 
     <item>
+      <title>MacWispr 1.2.10</title>
+      <link>https://github.com/vasanthsreeram/macwispr/releases/tag/v1.2.10</link>
+      <sparkle:version>1.2.10</sparkle:version>
+      <sparkle:shortVersionString>1.2.10</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <pubDate>Tue, 28 Jul 2026 13:53:00 +0000</pubDate>
+      <description><![CDATA[
+        <h2>MacWispr 1.2.10</h2>
+<ul>
+  <li><strong>SuperGrok STT</strong> — optional cloud dictation via your Grok CLI / SuperGrok login</li>
+  <li><strong>Consent first</strong> — one-time “Use Grok for voice dictation?” prompt</li>
+  <li><strong>Live streaming partials</strong> — text appears while you hold ⌥Space (Grok Build–style)</li>
+  <li><strong>Privacy update</strong> — Grok path documented; audio to xAI only after you opt in</li>
+</ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/vasanthsreeram/macwispr/releases/download/v1.2.10/MacWispr-1.2.10-macos-arm64.zip"
+        length="46036733"
+        type="application/octet-stream"
+        sparkle:edSignature="ev40LnxQkaEUp4BRDYNepnCW9b9sQ8oizVnyZZSHx2JqW24RNo1wda2H0LaiYREDCdXG9jhAWPyvdH6C98iIDA=="
+      />
+    </item>
+
+    <item>
       <title>MacWispr 1.2.9</title>
       <link>https://github.com/vasanthsreeram/macwispr/releases/tag/v1.2.9</link>
       <sparkle:version>1.2.9</sparkle:version>
