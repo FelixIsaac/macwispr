@@ -207,50 +207,57 @@ struct MenuBarView: View {
     }
 
     private var micPickerRow: some View {
-        Menu {
-            Button {
-                appState.setInputDeviceUID("")
-            } label: {
-                if appState.selectedInputDeviceUID.isEmpty {
-                    Label("System Default", systemImage: "checkmark")
-                } else {
-                    Text("System Default")
-                }
-            }
-            if !appState.availableInputDevices.isEmpty {
-                Divider()
-                ForEach(appState.availableInputDevices) { device in
-                    Button {
-                        appState.setInputDeviceUID(device.uid)
-                    } label: {
-                        if appState.selectedInputDeviceUID == device.uid {
-                            Label(device.name, systemImage: "checkmark")
-                        } else {
-                            Text(device.name)
-                        }
-                    }
-                }
-            }
-            Divider()
-            Button("Refresh device list") {
-                appState.refreshInputDevices()
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Label(currentInputDeviceLabel, systemImage: "mic.fill")
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .padding(.vertical, 6)
-            .padding(.horizontal, 4)
+        HStack(spacing: 6) {
+            Label(currentInputDeviceLabel, systemImage: "mic.fill")
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
-        .menuStyle(.borderlessButton)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .allowsHitTesting(false)
+        .overlay {
+            GeometryReader { _ in
+                AppKitPullDownMenu(
+                    items: micMenuItems,
+                    accessibilityLabel: "Microphone \(currentInputDeviceLabel)",
+                    toolTip: "Microphone used for dictation"
+                )
+            }
+        }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var micMenuItems: [AppKitSafeMenuItem] {
+        var items: [AppKitSafeMenuItem] = [
+            .action(
+                title: "System Default",
+                checked: appState.selectedInputDeviceUID.isEmpty
+            ) {
+                appState.setInputDeviceUID("")
+            }
+        ]
+        if !appState.availableInputDevices.isEmpty {
+            items.append(.separator)
+            for device in appState.availableInputDevices {
+                let uid = device.uid
+                items.append(.action(
+                    title: device.name.isEmpty ? "Microphone" : device.name,
+                    checked: appState.selectedInputDeviceUID == uid
+                ) {
+                    appState.setInputDeviceUID(uid)
+                })
+            }
+        }
+        items.append(.separator)
+        items.append(.action(title: "Refresh device list") {
+            appState.refreshInputDevices()
+        })
+        return items
     }
 
     private func menuRow(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
