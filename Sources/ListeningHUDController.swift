@@ -719,26 +719,19 @@ struct LiquidGlassSurface<S: InsettableShape>: ViewModifier {
     let shape: S
 
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content
-                .glassEffect(glassVariant, in: shape)
-                .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
-        } else {
-            content
-                .background(.regularMaterial, in: shape)
-                .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
-                .shadow(color: .black.opacity(0.18), radius: 8, y: 2)
-        }
-    }
-
-    @available(macOS 26.0, *)
-    private var glassVariant: Glass {
-        switch style {
-        case .clear:
-            return .clear
-        case .tinted:
-            // Soft accent tint — same idea as System Settings “Tinted”.
-            return .regular.tint(Color.accentColor.opacity(0.45))
-        }
+        // NOTE: SwiftUI `Glass` / `.glassEffect` need the **macOS 26 SDK**.
+        // `#available(macOS 26, *)` is not enough — GHA macos-15 / Xcode 16 only
+        // ships the macOS 15 SDK, so those symbols fail typecheck at build time.
+        // Material fallback keeps CI green; re-enable real Liquid Glass when CI
+        // uses an Xcode that includes the 26 SDK.
+        content
+            .background {
+                shape.fill(.regularMaterial)
+                if style == .tinted {
+                    shape.fill(Color.accentColor.opacity(0.18))
+                }
+            }
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.18), radius: 8, y: 2)
     }
 }
