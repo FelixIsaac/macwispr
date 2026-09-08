@@ -5,6 +5,7 @@ import MLXLLM
 import MLXHuggingFace
 import Tokenizers
 import HuggingFace
+import MacWisprCore
 
 /// On-device MLX polish for ASR transcripts (cleanup + lists + course-correction).
 ///
@@ -49,6 +50,7 @@ actor TextPolisher {
     func unload() {
         container = nil
         loadedModel = nil
+        Memory.clearCache()
     }
 
     func load(
@@ -90,8 +92,23 @@ actor TextPolisher {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return text }
         guard trimmed.split(whereSeparator: \.isWhitespace).count >= 3 else { return text }
-        guard let container else { return text }
+        guard container != nil else { return text }
 
+        let chunks = TextChunker.wordChunks(trimmed, maxWords: 120, overlapWords: 8)
+        if chunks.count <= 1 {
+            return await polishOnce(trimmed, fallback: text)
+        }
+        var parts: [String] = []
+        parts.reserveCapacity(chunks.count)
+        for chunk in chunks {
+            parts.append(await polishOnce(chunk, fallback: chunk))
+        }
+        let joined = TranscriptStitch.join(parts)
+        return joined.isEmpty ? text : joined
+    }
+
+    private func polishOnce(_ trimmed: String, fallback: String) async -> String {
+        guard let container else { return fallback }
         let wordCount = trimmed.split(whereSeparator: \.isWhitespace).count
         // Lists expand with newlines; allow more room than raw word count.
         let maxTokens = min(280, max(48, wordCount * 5))
@@ -121,10 +138,10 @@ actor TextPolisher {
                 return result
             }
             let cleaned = sanitize(output, original: trimmed)
-            return cleaned.isEmpty ? text : cleaned
+            return cleaned.isEmpty ? fallback : cleaned
         } catch {
             NSLog("MacWispr TextPolisher (MLX) failed: \(error.localizedDescription)")
-            return text
+            return fallback
         }
     }
 

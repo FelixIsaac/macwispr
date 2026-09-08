@@ -1,12 +1,14 @@
 import AVFoundation
 import Accelerate
 import AudioToolbox
+import MacWisprCore
 
 final class AudioRecorder: @unchecked Sendable {
     private let engine = AVAudioEngine()
     /// Core Audio device UID. `nil` / empty → system default input.
     var inputDeviceUID: String?
-    private var samples: [Float] = []
+    /// Long captures spill older PCM to disk; only a short tail stays in RAM.
+    let capture = SampleRing()
     private let targetSampleRate: Double = 16000
     private let lock = NSLock()
     private var isTapped = false
@@ -53,9 +55,7 @@ final class AudioRecorder: @unchecked Sendable {
     }
 
     func startRecording() {
-        // Pre-size for ~60s of 16 kHz mono so appends rarely reallocate.
-        samples = []
-        samples.reserveCapacity(Int(targetSampleRate) * 60)
+        capture.reset()
         lock.lock()
         meterLevel = 0
         lock.unlock()
@@ -136,7 +136,8 @@ final class AudioRecorder: @unchecked Sendable {
         }
     }
 
-    func stopRecording() -> [Float] {
+    /// Stop the mic but keep the capture ring for chunked STT.
+    func stopEngine() {
         if isTapped {
             engine.inputNode.removeTap(onBus: 0)
             isTapped = false
@@ -146,26 +147,38 @@ final class AudioRecorder: @unchecked Sendable {
         }
         converter?.reset()
         lock.lock()
-        let result = samples
         meterLevel = 0
         lock.unlock()
-        return result
+    }
+
+    /// Stop + materialize. Only for short clips (self-test). Long dictation uses `capture`.
+    func stopRecording() -> [Float] {
+        stopEngine()
+        return capture.takeAllAndClear()
+    }
+
+    func clearCapture() {
+        capture.reset()
     }
 
     /// Copy of audio captured so far without stopping the mic (for live partials).
     func snapshotSamples() -> [Float] {
-        lock.lock()
-        let copy = samples
-        lock.unlock()
-        return copy
+        capture.snapshotTail(maxSamples: AudioChunkPlanner.qwenWindowSamples)
     }
+
+    func snapshotTail(maxSamples: Int) -> [Float] {
+        capture.snapshotTail(maxSamples: maxSamples)
+    }
+
+    func copyNewSamples(from offset: Int) -> [Float] {
+        capture.copyNew(from: offset)
+    }
+
+    var capturedSampleCount: Int { capture.count }
 
     /// Seconds of 16 kHz mono captured so far.
     var capturedDuration: TimeInterval {
-        lock.lock()
-        let n = samples.count
-        lock.unlock()
-        return Double(n) / targetSampleRate
+        capture.duration
     }
 
     /// Binds `AVAudioEngine` to a specific input device before capture starts.
@@ -225,9 +238,7 @@ final class AudioRecorder: @unchecked Sendable {
 
     private func appendPassthrough(_ buffer: AVAudioPCMBuffer, frameCount: Int) {
         guard let channelData = buffer.floatChannelData else { return }
-        lock.lock()
-        samples.append(contentsOf: UnsafeBufferPointer(start: channelData[0], count: frameCount))
-        lock.unlock()
+        capture.append(UnsafeBufferPointer(start: channelData[0], count: frameCount))
     }
 
     private func convertAndAppend(
@@ -257,9 +268,7 @@ final class AudioRecorder: @unchecked Sendable {
         let outFrames = Int(convertBuffer.frameLength)
         guard outFrames > 0, let channelData = convertBuffer.floatChannelData else { return }
 
-        lock.lock()
-        samples.append(contentsOf: UnsafeBufferPointer(start: channelData[0], count: outFrames))
-        lock.unlock()
+        capture.append(UnsafeBufferPointer(start: channelData[0], count: outFrames))
     }
 
     /// vDSP mono-mix + linear resample when AVAudioConverter cannot be created.
@@ -278,9 +287,8 @@ final class AudioRecorder: @unchecked Sendable {
         )
 
         if abs(sourceSR - targetSampleRate) < 1.0 {
-            lock.lock()
-            samples.append(contentsOf: monoScratch.prefix(frameCount))
-            lock.unlock()
+            let prefix = Array(monoScratch.prefix(frameCount))
+            capture.append(prefix)
             return
         }
 
@@ -298,9 +306,7 @@ final class AudioRecorder: @unchecked Sendable {
             output[i] = monoScratch[lower] * (1 - frac) + monoScratch[upper] * frac
         }
 
-        lock.lock()
-        samples.append(contentsOf: output)
-        lock.unlock()
+        capture.append(output)
     }
 
     /// Average channels into `monoScratch` using Accelerate.

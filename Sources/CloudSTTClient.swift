@@ -1,4 +1,5 @@
 import Foundation
+import MacWisprCore
 
 /// Cloud speech-to-text and optional OpenAI polish. Uses the user's BYOK keys only.
 enum CloudSTTClient {
@@ -195,7 +196,7 @@ enum CloudSTTClient {
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
-        request.timeoutInterval = 120
+        request.timeoutInterval = 300
         request.httpBody = body
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -231,6 +232,7 @@ enum CloudSTTError: LocalizedError {
     case http(status: Int, body: String)
     case invalidResponse
     case notConfigured
+    case quotaExhausted(String)
 
     var errorDescription: String? {
         switch self {
@@ -248,6 +250,42 @@ enum CloudSTTError: LocalizedError {
             return "Cloud API returned an unexpected response."
         case .notConfigured:
             return "Cloud transcription is not configured."
+        case .quotaExhausted(let message):
+            return message
+        }
+    }
+}
+
+extension CloudSTTClient {
+    static func transcribeOpenAI(
+        ring: SampleRing,
+        apiKey: String,
+        language: String? = nil,
+        prompt: String? = nil
+    ) async throws -> String {
+        try await ring.transcribeWindows(
+            windowSamples: AudioChunkPlanner.cloudWindowSamples,
+            overlapSamples: AudioChunkPlanner.cloudOverlapSamples
+        ) { chunk in
+            try await transcribeOpenAI(
+                samples: chunk, apiKey: apiKey, language: language, prompt: prompt
+            )
+        }
+    }
+
+    static func transcribeElevenLabs(
+        ring: SampleRing,
+        apiKey: String,
+        language: String? = nil,
+        keyterms: [String] = []
+    ) async throws -> String {
+        try await ring.transcribeWindows(
+            windowSamples: AudioChunkPlanner.cloudWindowSamples,
+            overlapSamples: AudioChunkPlanner.cloudOverlapSamples
+        ) { chunk in
+            try await transcribeElevenLabs(
+                samples: chunk, apiKey: apiKey, language: language, keyterms: keyterms
+            )
         }
     }
 }

@@ -17,14 +17,19 @@ let package = Package(
         .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.9.0"),
     ],
     targets: [
+        .target(
+            name: "MacWisprCore",
+            path: "Sources/MacWisprCore"
+        ),
         .executableTarget(
             name: "MacWispr",
             dependencies: [
+                "MacWisprCore",
                 .product(name: "Qwen3ASR", package: "speech-swift"),
                 .product(name: "ParakeetASR", package: "speech-swift"),
                 .product(name: "Qwen3Chat", package: "speech-swift"),
-                .product(name: "SpeechVAD", package: "speech-swift"),
                 .product(name: "AudioCommon", package: "speech-swift"),
+                .product(name: "SpeechVAD", package: "speech-swift"),
                 .product(name: "Sparkle", package: "Sparkle"),
                 .product(name: "MLXLLM", package: "mlx-swift-lm"),
                 .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
@@ -32,7 +37,8 @@ let package = Package(
                 .product(name: "Tokenizers", package: "swift-transformers"),
                 .product(name: "HuggingFace", package: "swift-huggingface"),
             ],
-            path: "Sources"
+            path: "Sources",
+            exclude: ["MacWisprCore"]
         ),
         .executableTarget(
             name: "BenchLatency",
@@ -50,6 +56,11 @@ let package = Package(
                 .product(name: "AudioCommon", package: "speech-swift"),
             ],
             path: "bench/CompareASR"
+        ),
+        .testTarget(
+            name: "MacWisprCoreTests",
+            dependencies: ["MacWisprCore"],
+            path: "Tests/MacWisprCoreTests"
         ),
     ]
 )

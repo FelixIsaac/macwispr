@@ -7,6 +7,9 @@ DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# Isolated git worktrees (agent fan-out)
+.worktrees/
 qwen_transcript.txt
 *.app
 

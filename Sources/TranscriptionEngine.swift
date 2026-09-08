@@ -2,6 +2,8 @@ import Foundation
 import Qwen3ASR
 import ParakeetASR
 import SpeechVAD
+import MacWisprCore
+import MLX
 
 actor TranscriptionEngine {
     private enum Backend {
@@ -164,6 +166,7 @@ actor TranscriptionEngine {
         isWarmedUp = false
         loadedModelId = nil
         loadedEngine = nil
+        Memory.clearCache()
     }
 
     private func warmUpQwen(_ model: Qwen3ASRModel) {
@@ -186,6 +189,7 @@ actor TranscriptionEngine {
     }
 
     /// Batch transcription (Parakeet, short clips, or streaming fallback).
+    /// Long captures are split into overlapping windows so GPU RAM stays O(window).
     /// - Parameter context: Optional system-prompt context (custom vocab).
     ///   Applied for Qwen3 only — Parakeet does not take a context prompt.
     func transcribe(
@@ -193,10 +197,64 @@ actor TranscriptionEngine {
         language: String? = nil,
         context: String? = nil
     ) async throws -> String {
+        guard backend != nil else {
+            throw TranscriptionError.modelNotLoaded
+        }
+        let (window, overlap) = windowParams
+        if samples.count <= window {
+            return try transcribeOneWindow(
+                samples: samples, language: language, context: context
+            )
+        }
+        var parts: [String] = []
+        for w in AudioChunkPlanner.windows(
+            sampleCount: samples.count,
+            windowSamples: window,
+            overlapSamples: overlap
+        ) {
+            let chunk = Array(samples[w.startSample..<w.endSample])
+            parts.append(
+                try transcribeOneWindow(samples: chunk, language: language, context: context)
+            )
+        }
+        return TranscriptStitch.join(parts)
+    }
+
+    /// Same as `transcribe(samples:)` but never materializes the full session.
+    func transcribe(
+        ring: SampleRing,
+        language: String? = nil,
+        context: String? = nil
+    ) async throws -> String {
+        guard backend != nil else {
+            throw TranscriptionError.modelNotLoaded
+        }
+        let (window, overlap) = windowParams
+        return try await ring.transcribeWindows(
+            windowSamples: window,
+            overlapSamples: overlap
+        ) { chunk in
+            try self.transcribeOneWindow(samples: chunk, language: language, context: context)
+        }
+    }
+
+    private var windowParams: (Int, Int) {
+        switch loadedEngine {
+        case .parakeetCoreML:
+            return (AudioChunkPlanner.parakeetWindowSamples, AudioChunkPlanner.parakeetOverlapSamples)
+        default:
+            return (AudioChunkPlanner.qwenWindowSamples, AudioChunkPlanner.qwenOverlapSamples)
+        }
+    }
+
+    private func transcribeOneWindow(
+        samples: [Float],
+        language: String?,
+        context: String?
+    ) throws -> String {
         guard let backend else {
             throw TranscriptionError.modelNotLoaded
         }
-
         switch backend {
         case .qwen(let model):
             if !isWarmedUp { warmUpQwen(model) }
@@ -265,7 +323,7 @@ actor TranscriptionEngine {
             }
 
             let vad = vadModel!
-            let maxTokens = min(256, max(64, Int(durationSec * 25)))
+            let maxTokens = AudioChunkPlanner.maxTokens(forSampleCount: samples.count)
             let config = StreamingASRConfig(
                 maxSegmentDuration: 8.0,
                 vadConfig: .sileroDefault,
@@ -342,8 +400,7 @@ actor TranscriptionEngine {
         language: String?,
         context: String?
     ) -> String {
-        let durationSec = Double(samples.count) / 16000.0
-        let maxTokens = min(256, max(64, Int(durationSec * 25)))
+        let maxTokens = AudioChunkPlanner.maxTokens(forSampleCount: samples.count)
         return model.transcribe(
             audio: samples,
             sampleRate: 16000,
@@ -388,11 +445,13 @@ actor TranscriptionEngine {
 enum TranscriptionError: LocalizedError {
     case modelNotLoaded
     case recordingFailed
+    case outOfMemory(String)
 
     var errorDescription: String? {
         switch self {
         case .modelNotLoaded: return "Model not loaded"
         case .recordingFailed: return "Recording failed"
+        case .outOfMemory(let message): return message
         }
     }
 }
