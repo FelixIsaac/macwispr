@@ -833,16 +833,26 @@ struct SettingsView: View {
                 .fill(Color.white.opacity(style == .clear ? 0.22 : 0.12))
                 .frame(width: 40, height: 22)
                 .overlay {
-                    // Material stand-in for Liquid Glass (macOS 26 SDK not on GHA yet).
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            Capsule().fill(
-                                style == .tinted
-                                    ? Color.accentColor.opacity(0.35)
-                                    : Color.white.opacity(0.15)
+                    if #available(macOS 26.0, *) {
+                        Capsule()
+                            .fill(Color.clear)
+                            .glassEffect(
+                                style == .clear
+                                    ? .clear
+                                    : .regular.tint(Color.accentColor.opacity(0.55)),
+                                in: Capsule()
                             )
-                        )
+                    } else {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Capsule().fill(
+                                    style == .tinted
+                                        ? Color.accentColor.opacity(0.35)
+                                        : Color.white.opacity(0.15)
+                                )
+                            )
+                    }
                 }
                 .overlay(
                     // Diagonal sheen like Apple’s glass tiles

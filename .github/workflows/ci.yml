@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     name: Build & self-test
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
 
     steps:
@@ -27,8 +27,10 @@ jobs:
           # GitHub macos runners often need sudo for xcode-select (else exit 1 immediately).
           if [ -d /Applications/Xcode.app/Contents/Developer ]; then
             sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          elif [ -d /Applications/Xcode_16.app/Contents/Developer ]; then
-            sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+          elif [ -d /Applications/Xcode_26.5.app/Contents/Developer ]; then
+            sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
+          elif [ -d /Applications/Xcode_26.app/Contents/Developer ]; then
+            sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
           fi
           sudo xcodebuild -runFirstLaunch || xcodebuild -runFirstLaunch || true
           xcodebuild -downloadComponent MetalToolchain || true
