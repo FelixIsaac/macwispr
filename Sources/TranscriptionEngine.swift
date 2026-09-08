@@ -202,7 +202,7 @@ actor TranscriptionEngine {
         }
         let (window, overlap) = windowParams
         if samples.count <= window {
-            return try transcribeOneWindow(
+            return try await transcribeOneWindow(
                 samples: samples, language: language, context: context
             )
         }
@@ -214,7 +214,7 @@ actor TranscriptionEngine {
         ) {
             let chunk = Array(samples[w.startSample..<w.endSample])
             parts.append(
-                try transcribeOneWindow(samples: chunk, language: language, context: context)
+                try await transcribeOneWindow(samples: chunk, language: language, context: context)
             )
         }
         return TranscriptStitch.join(parts)
@@ -234,7 +234,7 @@ actor TranscriptionEngine {
             windowSamples: window,
             overlapSamples: overlap
         ) { chunk in
-            try self.transcribeOneWindow(samples: chunk, language: language, context: context)
+            try await self.transcribeOneWindow(samples: chunk, language: language, context: context)
         }
     }
 
@@ -251,7 +251,7 @@ actor TranscriptionEngine {
         samples: [Float],
         language: String?,
         context: String?
-    ) throws -> String {
+    ) async throws -> String {
         guard let backend else {
             throw TranscriptionError.modelNotLoaded
         }
