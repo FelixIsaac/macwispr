@@ -50,8 +50,10 @@ actor TextPolisher {
     func unload() {
         container = nil
         loadedModel = nil
-        Memory.cacheLimit = 0
         Memory.clearCache()
+        if Memory.cacheLimit > 32 * 1_024 * 1_024 {
+            Memory.cacheLimit = 32 * 1_024 * 1_024
+        }
     }
 
     func load(

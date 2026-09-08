@@ -170,15 +170,17 @@ actor TranscriptionEngine {
         Self.releaseGPUCache()
     }
 
-    /// MLX cacheLimit defaults to the (large) memoryLimit, so `clearCache()`
-    /// alone can leave ~100MB+ of reusable Metal buffers after unload.
-    /// Measured: Grok-after-unload 158 MB vs cold Grok 39 MB.
+    /// Drop unused Metal buffers. Do **not** pin `cacheLimit` to 0 — that is
+    /// process-global and would starve polish (or the other ASR) if still loaded.
+    /// A small cap evicts the multi-GB pool without a zero-cache thrash.
     private static func releaseGPUCache() {
-        Memory.cacheLimit = 0
         Memory.clearCache()
+        if Memory.cacheLimit > 32 * 1_024 * 1_024 {
+            Memory.cacheLimit = 32 * 1_024 * 1_024
+        }
     }
 
-    /// Inference wants a modest pool; 0 (idle) would thrash every layer.
+    /// Inference wants a modest pool after idle/cloud unload.
     private static func prepareGPUCacheForLoad() {
         if Memory.cacheLimit < 256 * 1_024 * 1_024 {
             Memory.cacheLimit = 1_024 * 1_024 * 1_024

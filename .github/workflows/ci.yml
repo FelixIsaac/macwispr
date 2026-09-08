@@ -36,6 +36,19 @@ jobs:
           xcodebuild -downloadComponent MetalToolchain || true
           ./scripts/preflight-xcode.sh
 
+      - name: Cache on-device ASR weights
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/qwen3-speech
+            ~/.cache/huggingface
+          key: qwen-asr-0.6b-${{ runner.os }}-${{ runner.arch }}
+          restore-keys: |
+            qwen-asr-0.6b-${{ runner.os }}-
+
+      - name: Unit tests (no model download)
+        run: swift test --filter MacWisprCoreTests
+
       - name: Build app bundle
         run: ./scripts/build-app.sh
 

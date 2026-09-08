@@ -76,14 +76,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 print("FAIL status item missing")
             }
 
-            // 2. Wait for model (up to ~60s)
+            // 2. Wait for model. Cold CI downloads ~1 GB Qwen 0.6B; 60s is not enough
+            // (failed at “Downloading weights… 30%”). Cap ~8 min.
             let state = appState ?? AppState.shared
             guard let state else {
                 print("FAIL no AppState")
                 exit(1)
             }
-            for _ in 0..<120 {
+            let maxTicks = 960 // 8 min @ 0.5s
+            for tick in 0..<maxTicks {
                 if state.isModelLoaded || state.modelLoadStatus.hasPrefix("Error") { break }
+                if tick > 0, tick % 20 == 0 {
+                    print("self-test waiting for model: \(state.modelLoadStatus)")
+                }
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
             if state.isModelLoaded {

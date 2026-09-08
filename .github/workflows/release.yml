@@ -77,6 +77,8 @@ jobs:
             sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           elif [ -d /Applications/Xcode_26.5.app/Contents/Developer ]; then
             sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
+          elif [ -d /Applications/Xcode_26.app/Contents/Developer ]; then
+            sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
           fi
           sudo xcodebuild -runFirstLaunch || xcodebuild -runFirstLaunch || true
           xcodebuild -downloadComponent MetalToolchain || true
