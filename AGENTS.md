@@ -17,7 +17,8 @@ Instructions for coding agents working in this repository.
 - Inserts text system-wide (Accessibility required for paste / event tap)
 - Marketing site: [fuckwisprflow.com](https://fuckwisprflow.com)
 - Sparkle updates: appcast at `https://fuckwisprflow.com/appcast.xml`
-- Latest **stable** ship line: **1.2.10** from **`main`** only (Developer ID Team `UTSTY3J6NS`; SuperGrok STT opt-in + live partials; mic picker + recordable hotkeys; polish download-on-enable, not in zip)
+- Latest **stable** ship line: **1.2.11** from **`main`** only (Developer ID Team `UTSTY3J6NS`; long-dictation memory bounds + idle unload; SuperGrok quota banner; mic picker + recordable hotkeys; polish download-on-enable, not in zip)
+- Prior stable: **1.2.10** (SuperGrok STT opt-in + live partials)
 - **Do not** launch repo `dist/MacWispr.app` — LaunchServices can prefer it over `/Applications`
 - **Do not** include branch `feat/native-lfm-polish` (LFM2.5 fine-tuned polish) in 1.2.4 — keep that branch separate
 
@@ -135,8 +136,8 @@ open -a MacWispr
 
 | Line | Doc | GitHub |
 |------|-----|--------|
-| **Stable 1.2.10** | [RELEASE_1.2.10.md](docs/context/RELEASE_1.2.10.md) | `latest` + Sparkle appcast |
-| **Prior stable 1.2.9** | [RELEASE_1.2.9.md](docs/context/RELEASE_1.2.9.md) | previous production |
+| **Stable 1.2.11** | [RELEASE_1.2.11.md](docs/context/RELEASE_1.2.11.md) | `latest` + Sparkle appcast |
+| **Prior stable 1.2.10** | [RELEASE_1.2.10.md](docs/context/RELEASE_1.2.10.md) | previous production |
 
 ### GitHub Actions (preferred)
 

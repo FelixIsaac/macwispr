@@ -1,4 +1,5 @@
 import Foundation
+import MacWisprCore
 
 /// Events from a live Grok streaming STT session (Grok Build protocol).
 enum GrokSTTEvent: Sendable {
@@ -103,7 +104,7 @@ actor GrokStreamingSession {
     /// Append float32 mono samples (16 kHz). Sends as little-endian PCM16 binary frames.
     func sendSamples(_ samples: [Float]) async {
         guard !closed, !samples.isEmpty else { return }
-        let pcm = AudioWAVEncoder.pcm16Data(from: samples)
+        let pcm = PCMCodec.int16Data(from: samples)
         var offset = 0
         while offset < pcm.count {
             let end = min(offset + Self.pcmChunkBytes, pcm.count)
@@ -124,7 +125,7 @@ actor GrokStreamingSession {
             teardown()
             let cleaned = terminalResult.trimmingCharacters(in: .whitespacesAndNewlines)
             if cleaned.isEmpty {
-                throw CloudSTTError.http(status: 0, body: "Grok STT: no speech detected")
+                throw Self.mappedError(status: 0, body: "Grok STT: no speech detected")
             }
             return cleaned
         }
@@ -136,7 +137,7 @@ actor GrokStreamingSession {
             let text = bestText()
             teardown()
             if text.isEmpty {
-                throw CloudSTTError.http(status: 0, body: "Grok STT: failed to end audio (\(error.localizedDescription))")
+                throw Self.mappedError(status: 0, body: "Grok STT: failed to end audio (\(error.localizedDescription))")
             }
             return text
         }
@@ -148,7 +149,7 @@ actor GrokStreamingSession {
                 }
                 group.addTask {
                     try await Task.sleep(nanoseconds: UInt64(Self.finishTimeout * 1_000_000_000))
-                    throw CloudSTTError.http(status: 0, body: "Grok STT: finish timed out")
+                    throw Self.mappedError(status: 0, body: "Grok STT: finish timed out")
                 }
                 let result = try await group.next()!
                 group.cancelAll()
@@ -157,7 +158,7 @@ actor GrokStreamingSession {
             teardown()
             let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
             if cleaned.isEmpty {
-                throw CloudSTTError.http(status: 0, body: "Grok STT: no speech detected")
+                throw Self.mappedError(status: 0, body: "Grok STT: no speech detected")
             }
             return cleaned
         } catch {
@@ -223,12 +224,12 @@ actor GrokStreamingSession {
             case .created:
                 return
             case .error(let msg):
-                throw CloudSTTError.http(status: 0, body: msg)
+                throw Self.mappedError(status: 0, body: msg)
             case .partial, .done, .unknown:
                 continue
             }
         }
-        throw CloudSTTError.http(status: 0, body: "Grok STT: timed out waiting for transcript.created")
+        throw Self.mappedError(status: 0, body: "Grok STT: timed out waiting for transcript.created")
     }
 
     private func startReceiveLoop() {
@@ -258,7 +259,7 @@ actor GrokStreamingSession {
             return
         case .error(let msg):
             onEvent(.error(msg))
-            failTerminal(CloudSTTError.http(status: 0, body: msg))
+            failTerminal(Self.mappedError(status: 0, body: msg))
         case .partial(let text, let isFinal, let speechFinal):
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
@@ -334,7 +335,7 @@ actor GrokStreamingSession {
             group.addTask {
                 let ns = UInt64(max(timeout, 0.05) * 1_000_000_000)
                 try await Task.sleep(nanoseconds: ns)
-                throw CloudSTTError.http(status: 0, body: "Grok STT: receive timed out")
+                throw Self.mappedError(status: 0, body: "Grok STT: receive timed out")
             }
             let result = try await group.next()!
             group.cancelAll()
@@ -401,7 +402,59 @@ enum GrokSTTClient {
             language: language,
             onEvent: { _ in }
         )
-        await session.sendSamples(samples)
+        // Stream in ~1 s slices so we never allocate one giant PCM16 blob.
+        let step = AudioChunkPlanner.sampleRate
+        var offset = 0
+        while offset < samples.count {
+            let end = min(offset + step, samples.count)
+            await session.sendSamples(Array(samples[offset..<end]))
+            offset = end
+        }
         return try await session.finish()
+    }
+
+    static func transcribe(
+        ring: SampleRing,
+        bearer: String,
+        language: String? = nil
+    ) async throws -> String {
+        let session = try await GrokStreamingSession.connect(
+            bearer: bearer,
+            language: language,
+            onEvent: { _ in }
+        )
+        let step = AudioChunkPlanner.sampleRate
+        var offset = 0
+        let total = ring.count
+        while offset < total {
+            let chunk = ring.loadRange(start: offset, count: min(step, total - offset))
+            await session.sendSamples(chunk)
+            offset += chunk.count
+            if chunk.isEmpty { break }
+        }
+        return try await session.finish()
+    }
+}
+
+extension GrokStreamingSession {
+    static func mappedError(status: Int, body: String) -> CloudSTTError {
+        let kind = GrokErrorClassifier.classify(status: status, body: body)
+        switch kind {
+        case .quota:
+            return .quotaExhausted(GrokErrorClassifier.userMessage(for: .quota))
+        case .auth:
+            return .http(status: status == 0 ? 401 : status, body: GrokErrorClassifier.userMessage(for: .auth))
+        case .empty:
+            return .http(status: 0, body: GrokErrorClassifier.userMessage(for: .empty))
+        case .network:
+            return .http(status: status, body: GrokErrorClassifier.userMessage(for: .network))
+        case .server:
+            // Keep a short redacted snippet so support can tell protocol vs outage.
+            let snippet = body.replacingOccurrences(of: "\n", with: " ").prefix(80)
+            let detail = snippet.isEmpty
+                ? GrokErrorClassifier.userMessage(for: .server)
+                : "\(GrokErrorClassifier.userMessage(for: .server)) (\(snippet))"
+            return .http(status: status, body: detail)
+        }
     }
 }

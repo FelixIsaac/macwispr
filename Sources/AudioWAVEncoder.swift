@@ -1,9 +1,10 @@
 import Foundation
+import MacWisprCore
 
 /// Encodes mono float32 samples (already at `sampleRate`) to 16-bit PCM WAV.
 enum AudioWAVEncoder {
     static func encode(samples: [Float], sampleRate: Int = 16_000) -> Data {
-        let pcm = int16PCM(from: samples)
+        let pcm = PCMCodec.int16Data(from: samples)
         var data = Data()
         data.reserveCapacity(44 + pcm.count)
 
@@ -39,17 +40,7 @@ enum AudioWAVEncoder {
 
     /// Raw little-endian 16-bit PCM (no container) — useful for ElevenLabs pcm_s16le_16.
     static func pcm16Data(from samples: [Float]) -> Data {
-        int16PCM(from: samples)
-    }
-
-    private static func int16PCM(from samples: [Float]) -> Data {
-        var data = Data(capacity: samples.count * 2)
-        for sample in samples {
-            let clamped = max(-1.0, min(1.0, sample))
-            var value = Int16((clamped * Float(Int16.max)).rounded())
-            withUnsafeBytes(of: &value) { data.append(contentsOf: $0) }
-        }
-        return data
+        PCMCodec.int16Data(from: samples)
     }
 }
 

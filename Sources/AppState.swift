@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 import AppKit
+import MacWisprCore
 
 enum DictationMode: String, CaseIterable, Identifiable {
     case hold = "Hold"
@@ -207,6 +208,9 @@ final class AppState: ObservableObject {
     private static let liveDraftReuseMaxNewSamples = 12_000 // 0.75s @ 16 kHz
     /// Max time to wait for an in-flight live pass to finish on release.
     private static let livePartialDrainTimeoutNs: UInt64 = 1_500_000_000 // 1.5s
+    /// Idle GPU unload + memory-pressure source (menu-bar process can live for days).
+    private var idleUnloadTask: Task<Void, Never>?
+    private var memoryPressureSource: DispatchSourceMemoryPressure?
     private static let customVocabularyKey = "customVocabulary"
     private static let asrModelSizeKey = "asrModelSize"
     private static let transcriptionProviderKey = "transcriptionProvider"
@@ -226,7 +230,8 @@ final class AppState: ObservableObject {
     var isReadyToDictate: Bool {
         switch transcriptionProvider {
         case .local:
-            return isModelLoaded
+            // Idle-unloaded weights still count as ready — we reload on hotkey.
+            return isModelLoaded || ASRModelCache.looksComplete(size: asrModelSize)
         case .openAI:
             return hasOpenAIKey
         case .elevenLabs:
@@ -469,6 +474,7 @@ final class AppState: ObservableObject {
             self?.syncLeaderboardIfNeeded(force: false)
             self?.maybeOfferGrokConsent()
         }
+        installMemoryPressureMonitor()
     }
 
     // MARK: - Grok SuperGrok STT (local CLI session)
@@ -720,7 +726,8 @@ final class AppState: ObservableObject {
         guard provider != transcriptionProvider else { return }
         if isRecording {
             stopGrokLiveStream(cancelRemote: true)
-            _ = audioRecorder.stopRecording()
+            audioRecorder.stopEngine()
+            audioRecorder.clearCapture()
             isRecording = false
             recordingSession += 1
             stopElapsedTimer()
@@ -832,10 +839,112 @@ final class AppState: ObservableObject {
         await transcriptionEngine.unloadModel()
     }
 
+    private func cancelIdleUnload() {
+        idleUnloadTask?.cancel()
+        idleUnloadTask = nil
+    }
+
+    /// Drop GPU/ANE weights after idle so a days-long menu-bar process does not pin RAM.
+    private func scheduleIdleUnload() {
+        cancelIdleUnload()
+        idleUnloadTask = Task { @MainActor [weak self] in
+            let polishNs = UInt64(MemoryPressurePolicy.idlePolishUnloadSeconds * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: polishNs)
+            guard let self, !Task.isCancelled, !self.isRecording else { return }
+            if self.isLLMLoaded {
+                await self.textPolisher.unload()
+                self.isLLMLoaded = false
+                self.llmLoadStatus = ""
+                NSLog("MacWispr: idle-unloaded polish weights")
+            }
+            let rest = MemoryPressurePolicy.idleASRUnloadSeconds
+                - MemoryPressurePolicy.idlePolishUnloadSeconds
+            if rest > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000))
+            }
+            guard !Task.isCancelled, !self.isRecording else { return }
+            guard self.transcriptionProvider == .local, self.isModelLoaded else { return }
+            await self.unloadLocalModelForProviderSwitch()
+            self.isModelLoaded = false
+            self.modelLoadStatus = "Idle — model unloaded"
+            self.syncIdlePhase()
+            NSLog("MacWispr: idle-unloaded ASR weights")
+        }
+    }
+
+    private func installMemoryPressureMonitor() {
+        let source = DispatchSource.makeMemoryPressureSource(
+            eventMask: [.warning, .critical],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            guard let self else { return }
+            let data = source.data
+            let level: MemoryPressureLevel = data.contains(.critical) ? .critical : .warning
+            Task { @MainActor in
+                await self.handleMemoryPressure(level)
+            }
+        }
+        source.resume()
+        memoryPressureSource = source
+    }
+
+    private func handleMemoryPressure(_ level: MemoryPressureLevel) async {
+        let action = MemoryPressurePolicy.action(
+            level: level,
+            availableBytes: ProcessMemory.availableBytes(),
+            asrLoaded: transcriptionProvider == .local && isModelLoaded,
+            polishLoaded: isLLMLoaded,
+            recording: isRecording
+        )
+        switch action {
+        case .keep:
+            break
+        case .unloadPolish:
+            await textPolisher.unload()
+            isLLMLoaded = false
+            llmLoadStatus = ""
+            NSLog("MacWispr: memory warning — unloaded polish")
+        case .unloadASRAndPolish:
+            await textPolisher.unload()
+            isLLMLoaded = false
+            llmLoadStatus = ""
+            if transcriptionProvider == .local {
+                await unloadLocalModelForProviderSwitch()
+                isModelLoaded = false
+                modelLoadStatus = "Unloaded under memory pressure"
+                syncIdlePhase()
+            }
+            if level == .critical, !isRecording {
+                presentFailure(MemoryPressurePolicy.oomUserMessage(triedLarge: asrModelSize == .large))
+            }
+            NSLog("MacWispr: memory %@ — unloaded ASR + polish", level == .critical ? "critical" : "warning")
+        }
+    }
+
     func loadModel() async {
         // Invalidate any prior in-flight load (size switch or overlapping prepare).
         modelLoadGeneration += 1
         let generation = modelLoadGeneration
+
+        if asrModelSize == .large,
+           !MemoryPressurePolicy.canLoadLargeQwen(availableBytes: ProcessMemory.availableBytes())
+        {
+            isModelLoading = false
+            isModelLoaded = false
+            modelLoadStatus = MemoryPressurePolicy.oomUserMessage(triedLarge: true)
+            presentFailure(modelLoadStatus)
+            return
+        }
+        if asrModelSize == .small,
+           !MemoryPressurePolicy.canLoadSmallQwen(availableBytes: ProcessMemory.availableBytes())
+        {
+            isModelLoading = false
+            isModelLoaded = false
+            modelLoadStatus = MemoryPressurePolicy.oomUserMessage(triedLarge: false)
+            presentFailure(modelLoadStatus)
+            return
+        }
 
         // Allow reload when switching size (isModelLoaded may already be true).
         isModelLoading = true
@@ -888,15 +997,25 @@ final class AppState: ObservableObject {
             isModelLoaded = true
             modelLoadStatus = "Ready"
             syncIdlePhase()
+            scheduleIdleUnload()
         } catch is CancellationError {
             // loadModel was superseded by unload or a newer load — ignore.
             guard generation == modelLoadGeneration else { return }
         } catch {
             guard generation == modelLoadGeneration else { return }
-            modelLoadStatus = "Error: \(error.localizedDescription)"
+            await transcriptionEngine.unloadModel()
+            let raw = error.localizedDescription
+            if MemoryPressurePolicy.looksLikeOOM(raw) {
+                modelLoadStatus = MemoryPressurePolicy.oomUserMessage(
+                    triedLarge: asrModelSize == .large
+                )
+                presentFailure(modelLoadStatus)
+            } else {
+                modelLoadStatus = "Error: \(raw)"
+                setPhase(.failed, detail: modelLoadStatus)
+                schedulePhaseResetToIdle()
+            }
             isModelLoaded = false
-            setPhase(.failed, detail: modelLoadStatus)
-            schedulePhaseResetToIdle()
         }
 
         if generation == modelLoadGeneration {
@@ -910,7 +1029,8 @@ final class AppState: ObservableObject {
         asrModelSize = size
         UserDefaults.standard.set(size.rawValue, forKey: Self.asrModelSizeKey)
         if isRecording {
-            _ = audioRecorder.stopRecording()
+            audioRecorder.stopEngine()
+            audioRecorder.clearCapture()
             isRecording = false
             recordingSession += 1
             stopElapsedTimer()
@@ -958,7 +1078,8 @@ final class AppState: ObservableObject {
         livePartialTask?.cancel()
         livePartialTask = nil
         stopGrokLiveStream(cancelRemote: true)
-        _ = audioRecorder.stopRecording()
+        audioRecorder.stopEngine()
+        audioRecorder.clearCapture()
         isRecording = false
         stopElapsedTimer()
         currentTranscription = ""
@@ -1131,6 +1252,18 @@ final class AppState: ObservableObject {
             return
         }
         guard !isRecording else { return }
+        // Idle-unloaded local weights: reload then start (disk cache is kept).
+        if transcriptionProvider == .local, !isModelLoaded {
+            if isModelLoading { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.loadModel()
+                guard self.isModelLoaded, !self.isRecording else { return }
+                self.startRecording()
+            }
+            return
+        }
+        cancelIdleUnload()
         phaseResetTask?.cancel()
         lastFailureMessage = nil
         isRecording = true
@@ -1212,11 +1345,9 @@ final class AppState: ObservableObject {
                 guard self.isRecording, self.recordingSession == session else { break }
                 guard self.dictationPhase == .listening else { break }
 
-                let snap = self.audioRecorder.snapshotSamples()
-                if snap.count > self.grokStreamSentSamples {
-                    let start = self.grokStreamSentSamples
-                    let delta = Array(snap[start..<snap.count])
-                    self.grokStreamSentSamples = snap.count
+                let delta = self.audioRecorder.copyNewSamples(from: self.grokStreamSentSamples)
+                if !delta.isEmpty {
+                    self.grokStreamSentSamples += delta.count
                     await stream.sendSamples(delta)
                 }
 
@@ -1262,7 +1393,7 @@ final class AppState: ObservableObject {
     }
 
     /// Flush remaining PCM, send `audio.done`, wait for trailing final (Grok Build stop).
-    private func finishGrokLiveStream(finalSamples: [Float]) async -> String? {
+    private func finishGrokLiveStream(ring: SampleRing) async -> String? {
         // Stop the pump so we don't race sendSamples.
         grokStreamPumpTask?.cancel()
         grokStreamPumpTask = nil
@@ -1278,9 +1409,9 @@ final class AppState: ObservableObject {
         grokStreamSession = nil
 
         // Send any tail the pump didn't flush (release race).
-        if finalSamples.count > grokStreamSentSamples {
-            let delta = Array(finalSamples[grokStreamSentSamples..<finalSamples.count])
-            grokStreamSentSamples = finalSamples.count
+        if ring.count > grokStreamSentSamples {
+            let delta = ring.copyNew(from: grokStreamSentSamples)
+            grokStreamSentSamples = ring.count
             await stream.sendSamples(delta)
         }
 
@@ -1294,9 +1425,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Periodically re-transcribe the growing mic buffer so the HUD types live.
-    /// Works for **Qwen (MLX)** and **Parakeet (Core ML)** — both use full-buffer
-    /// batch re-runs (Parakeet has no separate token stream API in-app).
+    /// Periodically re-transcribe the *tail* of the mic buffer so the HUD types live.
+    /// Full-buffer re-runs are O(n²) and OOM on long dictation — window stays O(30s).
     private func startLivePartialLoop(session: Int) {
         livePartialTask?.cancel()
         livePartialInFlight = false
@@ -1313,14 +1443,17 @@ final class AppState: ObservableObject {
                 guard self.dictationPhase == .listening else { return }
 
                 if !self.livePartialInFlight {
-                    let snap = self.audioRecorder.snapshotSamples()
+                    let window = self.asrModelSize.engine == .parakeetCoreML
+                        ? AudioChunkPlanner.parakeetWindowSamples
+                        : AudioChunkPlanner.qwenWindowSamples
+                    let snap = self.audioRecorder.snapshotTail(maxSamples: window)
                     if snap.count >= Self.livePartialMinSamples {
                         self.livePartialInFlight = true
                         let context = self.asrModelSize.supportsContext ? self.asrContext : nil
                         let language = self.selectedLanguage
                         let engine = self.transcriptionEngine
                         let sessionAtStart = session
-                        let snapCount = snap.count
+                        let snapCount = self.audioRecorder.capturedSampleCount
                         Task { [weak self] in
                             defer {
                                 Task { @MainActor [weak self] in
@@ -1386,6 +1519,15 @@ final class AppState: ObservableObject {
         // Local batch re-runs + Grok streaming both leave a trustworthy draft.
         guard transcriptionProvider == .local || transcriptionProvider == .grok else { return false }
         guard lastLivePartialSampleCount >= Self.livePartialMinSamples else { return false }
+        // Local live ASR only sees the last window — never paste that as a long utterance.
+        if transcriptionProvider == .local {
+            let window = asrModelSize.engine == .parakeetCoreML
+                ? AudioChunkPlanner.parakeetWindowSamples
+                : AudioChunkPlanner.qwenWindowSamples
+            if totalSamples > window + Self.liveDraftReuseMaxNewSamples {
+                return false
+            }
+        }
         let newSamples = totalSamples - lastLivePartialSampleCount
         // Draft covered nearly the whole buffer (or was slightly ahead of stop).
         return newSamples <= Self.liveDraftReuseMaxNewSamples
@@ -1397,15 +1539,21 @@ final class AppState: ObservableObject {
         recordingSession += 1
         stopElapsedTimer()
         stopLivePartialLoop()
-        let samples = audioRecorder.stopRecording()
+        audioRecorder.stopEngine()
+        let ring = audioRecorder.capture
+        let sampleCount = ring.count
+        defer {
+            audioRecorder.clearCapture()
+            scheduleIdleUnload()
+        }
 
         // Pop when mic stops (successful capture). Empty/error uses failure chime via presentFailure.
-        if soundFeedbackEnabled, !samples.isEmpty {
+        if soundFeedbackEnabled, sampleCount > 0 {
             refreshOutputMuteState()
             FeedbackSounds.playListeningStopped()
         }
 
-        guard !samples.isEmpty else {
+        guard sampleCount > 0 else {
             stopGrokLiveStream(cancelRemote: true)
             reportEmptyAudioFailure()
             presentFailure("No audio captured — hold longer, or check Microphone permission.")
@@ -1431,19 +1579,19 @@ final class AppState: ObservableObject {
             }
         }
 
-        let audioDuration = Double(samples.count) / 16000.0
+        let audioDuration = Double(sampleCount) / 16000.0
         let sttStarted = Date()
         do {
             let text: String
             if transcriptionProvider == .grok {
                 // Grok Build path: flush tail + audio.done on the live socket.
                 // Prefer the streaming final (already painted partials feel instant).
-                if let streamed = await finishGrokLiveStream(finalSamples: samples),
+                if let streamed = await finishGrokLiveStream(ring: ring),
                    !streamed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 {
                     text = streamed
                     NSLog("MacWispr: Grok live stream final (%d chars)", text.count)
-                } else if shouldReuseLiveDraft(draft: draft, totalSamples: samples.count) {
+                } else if shouldReuseLiveDraft(draft: draft, totalSamples: sampleCount) {
                     text = draft
                     NSLog("MacWispr: Grok release using live draft")
                 } else {
@@ -1452,25 +1600,25 @@ final class AppState: ObservableObject {
                         setPhase(.transcribing, detail: draft)
                         ListeningHUDController.shared.sync(with: self)
                     }
-                    text = try await transcribeSamples(samples)
+                    text = try await transcribeCapture(ring)
                 }
             } else {
-                let reusedLiveDraft = shouldReuseLiveDraft(draft: draft, totalSamples: samples.count)
+                let reusedLiveDraft = shouldReuseLiveDraft(draft: draft, totalSamples: sampleCount)
                 if reusedLiveDraft {
                     // Fast path: HUD already showed this text — paste without re-STT.
                     text = draft
                     NSLog(
                         "MacWispr: release using live draft (new samples=%d ≤ %d)",
-                        samples.count - lastLivePartialSampleCount,
+                        sampleCount - lastLivePartialSampleCount,
                         Self.liveDraftReuseMaxNewSamples
                     )
                 } else {
-                    // Buffer grew after last draft (or no draft) — full final pass.
+                    // Buffer grew after last draft (or no draft) — chunked final pass.
                     if !draft.isEmpty {
                         setPhase(.transcribing, detail: draft)
                         ListeningHUDController.shared.sync(with: self)
                     }
-                    text = try await transcribeSamples(samples)
+                    text = try await transcribeCapture(ring)
                 }
             }
             let sttLatency = Date().timeIntervalSince(sttStarted)
@@ -1508,7 +1656,7 @@ final class AppState: ObservableObject {
             // Local-only debug dump (off by default). Never sent as telemetry.
             if devCaptureEnabled || DevCaptureStore.isEnabled {
                 DevCaptureStore.save(
-                    samples: samples,
+                    samples: Self.devCapturePCM(from: ring),
                     entryId: entryId,
                     rawSTT: text,
                     afterPostProcess: afterLight,
@@ -1569,7 +1717,7 @@ final class AppState: ObservableObject {
             lastTranscriptionId = nil
             if devCaptureEnabled || DevCaptureStore.isEnabled {
                 DevCaptureStore.save(
-                    samples: samples,
+                    samples: Self.devCapturePCM(from: ring),
                     entryId: nil,
                     rawSTT: nil,
                     afterPostProcess: nil,
@@ -1584,7 +1732,13 @@ final class AppState: ObservableObject {
                 )
             }
             Telemetry.shared.reportDictationFailed(reason: .sttError)
-            presentFailure("Transcription failed: \(error.localizedDescription)")
+            if let cloud = error as? CloudSTTError, case .quotaExhausted(let msg) = cloud {
+                presentFailure(msg)
+            } else if MemoryPressurePolicy.looksLikeOOM(error.localizedDescription) {
+                presentFailure(MemoryPressurePolicy.oomUserMessage(triedLarge: asrModelSize == .large))
+            } else {
+                presentFailure("Transcription failed: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -1719,13 +1873,13 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(mode.rawValue, forKey: "insertionMode")
     }
 
-    private func transcribeSamples(_ samples: [Float]) async throws -> String {
+    private func transcribeCapture(_ ring: SampleRing) async throws -> String {
         switch transcriptionProvider {
         case .local:
             // Parakeet ignores context; only pass vocab for Qwen.
             let context = asrModelSize.supportsContext ? asrContext : nil
             return try await transcriptionEngine.transcribe(
-                samples: samples,
+                ring: ring,
                 language: selectedLanguage,
                 context: context
             )
@@ -1734,7 +1888,7 @@ final class AppState: ObservableObject {
                 throw CloudSTTError.missingAPIKey("OpenAI")
             }
             return try await CloudSTTClient.transcribeOpenAI(
-                samples: samples,
+                ring: ring,
                 apiKey: key,
                 language: selectedLanguage,
                 prompt: asrContext
@@ -1744,7 +1898,7 @@ final class AppState: ObservableObject {
                 throw CloudSTTError.missingAPIKey("ElevenLabs")
             }
             return try await CloudSTTClient.transcribeElevenLabs(
-                samples: samples,
+                ring: ring,
                 apiKey: key,
                 language: selectedLanguage,
                 keyterms: customVocabulary
@@ -1755,11 +1909,19 @@ final class AppState: ObservableObject {
             }
             let bearer = try await GrokOAuthStore.resolveBearer()
             return try await GrokSTTClient.transcribe(
-                samples: samples,
+                ring: ring,
                 bearer: bearer,
                 language: selectedLanguage
             )
         }
+    }
+
+    /// Cap debug WAV at 2 minutes so a long session cannot dump a gigabyte to disk.
+    private static func devCapturePCM(from ring: SampleRing) -> [Float] {
+        let cap = 120 * AudioChunkPlanner.sampleRate
+        let n = min(ring.count, cap)
+        guard n > 0 else { return [] }
+        return ring.loadRange(start: 0, count: n)
     }
 
     private func applyPolish(_ text: String) async -> String {

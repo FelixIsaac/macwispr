@@ -1,7 +1,7 @@
 import Cocoa
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Shared so menu bar actions can open the dashboard without depending on
     /// SwiftUI `openWindow` (often a no-op from MenuBarExtra).
     static private(set) var shared: AppDelegate?
@@ -12,10 +12,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Retained AppKit host for the main dashboard (not released on close).
     private var dashboardWindow: NSWindow?
 
+    /// Local ⌘Q / ⌘W while the app is active (Settings scene menus can miss AppKit hosts).
+    private var commandKeyMonitor: Any?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
         // Menu-bar agent (LSUIElement) — stay out of the Dock until a window opens.
         NSApp.setActivationPolicy(.accessory)
+        NSWindow.allowsAutomaticWindowTabbing = false
+        installCommandKeyMonitor()
+        DispatchQueue.main.async { [weak self] in
+            self?.closeStrayMacWisprWindows(keeping: self?.dashboardWindow)
+        }
 
         // Sparkle: start background update checks when Info.plist has SUFeedURL
         // (packaged .app). Bare SPM binaries skip this — see SparkleUpdater.
@@ -188,6 +196,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false // Keep running in menu bar
     }
 
+    /// File > Close Window / ⌘W: hide the dashboard, stay in the menu bar. Does not quit.
+    func closeDashboard() {
+        DispatchQueue.main.async { [weak self] in
+            self?.performCloseDashboard()
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // Flush any pending opt-in telemetry before process exit (fail-silent).
         Telemetry.shared.flush(force: true)
@@ -249,22 +264,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.center()
             window.setFrameAutosaveName("MacWisprMain")
             window.collectionBehavior.insert(.moveToActiveSpace)
-
-            NotificationCenter.default.addObserver(
-                forName: NSWindow.willCloseNotification,
-                object: window,
-                queue: .main
-            ) { _ in
-                DispatchQueue.main.async {
-                    // Keep the window instance for fast reopen; drop Dock presence.
-                    let otherVisible = NSApp.windows.contains {
-                        $0 !== window && $0.isVisible && $0.isMacWisprDashboardCandidate
-                    }
-                    if !otherVisible {
-                        NSApp.setActivationPolicy(.accessory)
-                    }
-                }
-            }
+            window.tabbingMode = .disallowed
+            window.delegate = self
 
             dashboardWindow = window
         }
@@ -288,6 +289,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             self.lockDashboardToolbar(window)
+        }
+    }
+
+    @MainActor
+    private func performCloseDashboard() {
+        if let window = dashboardWindow, window.isVisible {
+            window.performClose(nil)
+            return
+        }
+        if let key = NSApp.keyWindow, key.isMacWisprDashboardCandidate, key.isVisible {
+            key.performClose(nil)
+        }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === dashboardWindow else { return }
+        DispatchQueue.main.async {
+            // Keep the window instance for fast reopen; drop Dock presence.
+            let otherVisible = NSApp.windows.contains {
+                $0 !== window && $0.isVisible && $0.isMacWisprDashboardCandidate
+            }
+            if !otherVisible {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
+    private func installCommandKeyMonitor() {
+        guard commandKeyMonitor == nil else { return }
+        commandKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+            guard flags == .command else { return event }
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case "q":
+                NSApp.terminate(nil)
+                return nil
+            case "w":
+                self?.closeDashboard()
+                return nil
+            default:
+                return event
+            }
         }
     }
 
@@ -325,7 +372,10 @@ private extension NSWindow {
         if identifier?.rawValue == "MacWisprDashboard" || identifier?.rawValue == "main" {
             return true
         }
-        return title == "MacWispr"
+        if title == "MacWispr" || title == "Settings" || title == "Preferences" {
+            return true
+        }
+        return false
     }
 }
 

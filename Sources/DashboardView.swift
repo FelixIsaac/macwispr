@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import Charts
 
 struct DashboardView: View {
@@ -26,53 +27,61 @@ struct DashboardView: View {
 
     /// Compact Home strip → full Leaderboard pane for join / name / rank.
     private var leaderboardRow: some View {
-        Button {
-            NotificationCenter.default.post(name: .macWisprShowLeaderboard, object: nil)
-        } label: {
-            HStack(spacing: 14) {
-                if appState.leaderboardOptIn {
-                    LeaderboardAvatarView(
-                        animal: appState.leaderboardAnimal.isEmpty ? "Otter" : appState.leaderboardAnimal,
-                        avatarKey: appState.leaderboardAvatarKey.isEmpty
-                            ? appState.leaderboardDisplayName
-                            : appState.leaderboardAvatarKey,
-                        size: 48
-                    )
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(rankHeadline)
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .foregroundStyle(rankColor)
-                        Text(nameLine)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                        Text(statsLine)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                } else {
-                    Image(systemName: "trophy.fill")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
-                        .frame(width: 48, height: 48)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Leaderboard")
-                            .font(.subheadline.weight(.semibold))
-                        Text("Join, pick a name, see your rank")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+        HStack(spacing: 14) {
+            if appState.leaderboardOptIn {
+                LeaderboardAvatarView(
+                    animal: appState.leaderboardAnimal.isEmpty ? "Otter" : appState.leaderboardAnimal,
+                    avatarKey: appState.leaderboardAvatarKey.isEmpty
+                        ? appState.leaderboardDisplayName
+                        : appState.leaderboardAvatarKey,
+                    size: 48
+                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(rankHeadline)
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(rankColor)
+                    Text(nameLine)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Text(statsLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+            } else {
+                Image(systemName: "trophy.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+                    .frame(width: 48, height: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Leaderboard")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Join, pick a name, see your rank")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.quaternary.opacity(0.45)))
-            .contentShape(Rectangle())
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.quaternary.opacity(0.45)))
+        .contentShape(Rectangle())
+        .allowsHitTesting(false)
+        .overlay {
+            GeometryReader { _ in
+                AppKitClickTarget(
+                    accessibilityLabel: appState.leaderboardOptIn
+                        ? "\(rankHeadline) \(nameLine)"
+                        : "Leaderboard",
+                    action: {
+                        NotificationCenter.default.post(name: .macWisprShowLeaderboard, object: nil)
+                    }
+                )
+            }
+        }
         .onAppear {
             appState.refreshLeaderboardStanding()
             if appState.leaderboardOptIn {
@@ -156,50 +165,29 @@ struct DashboardView: View {
     /// Quick mic picker (same devices as toolbar / menu bar).
     private var micQuickSwitch: some View {
         VStack(alignment: .trailing, spacing: 4) {
-            Menu {
-                Button {
-                    appState.setInputDeviceUID("")
-                } label: {
-                    if appState.selectedInputDeviceUID.isEmpty {
-                        Label("System Default", systemImage: "checkmark")
-                    } else {
-                        Text("System Default")
-                    }
-                }
-                if !appState.availableInputDevices.isEmpty {
-                    Divider()
-                    ForEach(appState.availableInputDevices) { device in
-                        Button {
-                            appState.setInputDeviceUID(device.uid)
-                        } label: {
-                            if appState.selectedInputDeviceUID == device.uid {
-                                Label(device.name, systemImage: "checkmark")
-                            } else {
-                                Text(device.name)
-                            }
-                        }
-                    }
-                }
-                Divider()
-                Button("Refresh device list") {
-                    appState.refreshInputDevices()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "mic.fill")
-                        .font(.caption.weight(.semibold))
-                    Text(dashboardMicLabel)
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.quaternary.opacity(0.7), in: Capsule())
+            HStack(spacing: 6) {
+                Image(systemName: "mic.fill")
+                    .font(.caption.weight(.semibold))
+                Text(dashboardMicLabel)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
-            .menuStyle(.borderlessButton)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(.quaternary.opacity(0.7), in: Capsule())
+            .allowsHitTesting(false)
+            .overlay {
+                GeometryReader { _ in
+                    AppKitPullDownMenu(
+                        items: micMenuItems,
+                        accessibilityLabel: "Microphone \(dashboardMicLabel)",
+                        toolTip: "Microphone used for dictation"
+                    )
+                }
+            }
             .fixedSize()
             .help("Microphone used for dictation")
 
@@ -220,86 +208,68 @@ struct DashboardView: View {
         return name.count > 18 ? String(name.prefix(16)) + "…" : name
     }
 
+    private var micMenuItems: [AppKitSafeMenuItem] {
+        var items: [AppKitSafeMenuItem] = [
+            .action(
+                title: "System Default",
+                checked: appState.selectedInputDeviceUID.isEmpty
+            ) {
+                appState.setInputDeviceUID("")
+            }
+        ]
+        if !appState.availableInputDevices.isEmpty {
+            items.append(.separator)
+            for device in appState.availableInputDevices {
+                let uid = device.uid
+                let title = device.name.isEmpty ? "Microphone" : device.name
+                items.append(.action(
+                    title: title,
+                    checked: appState.selectedInputDeviceUID == uid
+                ) {
+                    appState.setInputDeviceUID(uid)
+                })
+            }
+        }
+        items.append(.separator)
+        items.append(.action(title: "Refresh device list") {
+            appState.refreshInputDevices()
+        })
+        return items
+    }
+
     /// Top-right chip: current STT model / provider with a one-click switcher.
     private var modelQuickSwitch: some View {
         VStack(alignment: .trailing, spacing: 4) {
-            Menu {
-                Section("Local") {
-                    ForEach(ASRModelSize.dashboardChoices) { size in
-                        Button {
-                            appState.setTranscriptionProvider(.local)
-                            appState.setASRModelSize(size)
-                        } label: {
-                            if isSelectedLocalModel(size) {
-                                Label(size.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(size.displayName)
-                            }
-                        }
-                        .disabled(appState.isModelLoading || appState.isRecording)
-                    }
-                }
-                Section("Cloud (BYOK)") {
-                    Button {
-                        appState.setTranscriptionProvider(.openAI)
-                    } label: {
-                        if appState.transcriptionProvider == .openAI {
-                            Label("OpenAI", systemImage: "checkmark")
-                        } else {
-                            Text("OpenAI")
-                        }
-                    }
-                    Button {
-                        appState.setTranscriptionProvider(.elevenLabs)
-                    } label: {
-                        if appState.transcriptionProvider == .elevenLabs {
-                            Label("ElevenLabs", systemImage: "checkmark")
-                        } else {
-                            Text("ElevenLabs")
-                        }
-                    }
-                }
-                if appState.hasGrokSession || appState.grokSTTConsented {
-                    Section("Grok") {
-                        Button {
-                            if appState.grokSTTConsented {
-                                appState.setTranscriptionProvider(.grok)
-                            } else {
-                                appState.acceptGrokSTTConsent(switchProvider: true)
-                            }
-                        } label: {
-                            if appState.transcriptionProvider == .grok {
-                                Label("Grok (SuperGrok)", systemImage: "checkmark")
-                            } else {
-                                Text("Grok (SuperGrok)")
-                            }
-                        }
-                        .disabled(!appState.hasGrokSession && !appState.grokSTTConsented)
-                    }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    if appState.isModelLoading && appState.transcriptionProvider == .local {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: modelChipSymbol)
-                            .font(.caption.weight(.semibold))
-                    }
-                    Text(modelChipTitle)
+            HStack(spacing: 6) {
+                if appState.isModelLoading && appState.transcriptionProvider == .local {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: modelChipSymbol)
                         .font(.caption.weight(.semibold))
-                        .lineLimit(1)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.quaternary.opacity(0.7), in: Capsule())
+                Text(modelChipTitle)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
-            .menuStyle(.borderlessButton)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(.quaternary.opacity(0.7), in: Capsule())
+            .allowsHitTesting(false)
+            .overlay {
+                GeometryReader { _ in
+                    AppKitPullDownMenu(
+                        items: modelMenuItems,
+                        isEnabled: !appState.isRecording,
+                        accessibilityLabel: "\(modelChipTitle) \(modelChipSubtitle)",
+                        toolTip: modelChipHelp
+                    )
+                }
+            }
             .fixedSize()
-            .disabled(appState.isRecording)
             .help(modelChipHelp)
 
             if appState.isModelLoading, appState.transcriptionProvider == .local {
@@ -381,6 +351,50 @@ struct DashboardView: View {
             return appState.asrModelSize == .parakeetInt8 || appState.asrModelSize == .parakeetInt4
         }
         return appState.asrModelSize == size
+    }
+
+    private var modelMenuItems: [AppKitSafeMenuItem] {
+        let localEnabled = !appState.isModelLoading && !appState.isRecording
+        var items: [AppKitSafeMenuItem] = [.header("Local")]
+        for size in ASRModelSize.dashboardChoices {
+            items.append(.action(
+                title: size.displayName,
+                checked: isSelectedLocalModel(size),
+                enabled: localEnabled
+            ) {
+                appState.setTranscriptionProvider(.local)
+                appState.setASRModelSize(size)
+            })
+        }
+        items.append(.header("Cloud (BYOK)"))
+        items.append(.action(
+            title: "OpenAI",
+            checked: appState.transcriptionProvider == .openAI
+        ) {
+            appState.setTranscriptionProvider(.openAI)
+        })
+        items.append(.action(
+            title: "ElevenLabs",
+            checked: appState.transcriptionProvider == .elevenLabs
+        ) {
+            appState.setTranscriptionProvider(.elevenLabs)
+        })
+        if appState.hasGrokSession || appState.grokSTTConsented {
+            let grokEnabled = appState.hasGrokSession || appState.grokSTTConsented
+            items.append(.header("Grok"))
+            items.append(.action(
+                title: "Grok (SuperGrok)",
+                checked: appState.transcriptionProvider == .grok,
+                enabled: grokEnabled
+            ) {
+                if appState.grokSTTConsented {
+                    appState.setTranscriptionProvider(.grok)
+                } else {
+                    appState.acceptGrokSTTConsent(switchProvider: true)
+                }
+            })
+        }
+        return items
     }
 
     private var weekCards: some View {

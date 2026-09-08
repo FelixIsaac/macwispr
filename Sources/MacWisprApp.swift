@@ -19,8 +19,8 @@ struct MacWisprApp: App {
         // (GitHub #15: multiple windows + broken Cmd+Q when commands were removed).
         //
         // SwiftUI still requires a Scene. `Settings` is only an anchor; product
-        // Settings live in the dashboard. We replace the default Settings command
-        // so Cmd+, opens the real UI, and keep default Quit (Cmd+Q).
+        // Settings live in the dashboard. Settings-only scenes omit File > Close
+        // for AppKit hosts, so Cmd+Q/W are explicit (not the default suite).
         Settings {
             EmptyView()
         }
@@ -30,6 +30,20 @@ struct MacWisprApp: App {
                     openDashboardSettings()
                 }
                 .keyboardShortcut(",", modifiers: .command)
+            }
+            // File > Close (⌘W): hide dashboard, stay a menu-bar accessory. Do not quit.
+            CommandGroup(replacing: .saveItem) {
+                Button("Close Window") {
+                    AppDelegate.shared?.closeDashboard()
+                }
+                .keyboardShortcut("w", modifiers: .command)
+            }
+            // App > Quit (⌘Q): terminate even when no SwiftUI Window scene exists.
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit MacWispr") {
+                    NSApp.terminate(nil)
+                }
+                .keyboardShortcut("q", modifiers: .command)
             }
         }
     }

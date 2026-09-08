@@ -33,48 +33,56 @@ struct MainWindowView: View {
 
     /// Top-right: choose which microphone MacWispr uses for dictation.
     private var micInputToolbarMenu: some View {
-        Menu {
-            Button {
-                appState.setInputDeviceUID("")
-            } label: {
-                if appState.selectedInputDeviceUID.isEmpty {
-                    Label("System Default", systemImage: "checkmark")
-                } else {
-                    Text("System Default")
-                }
-            }
-            if !appState.availableInputDevices.isEmpty {
-                Divider()
-                ForEach(appState.availableInputDevices) { device in
-                    Button {
-                        appState.setInputDeviceUID(device.uid)
-                    } label: {
-                        if appState.selectedInputDeviceUID == device.uid {
-                            Label(device.name, systemImage: "checkmark")
-                        } else {
-                            Text(device.name)
-                        }
-                    }
-                }
-            }
-            Divider()
-            Button("Refresh device list") {
-                appState.refreshInputDevices()
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "mic.fill")
-                Text(toolbarMicLabel)
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 5) {
+            Image(systemName: "mic.fill")
+            Text(toolbarMicLabel)
+                .lineLimit(1)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .allowsHitTesting(false)
+        .overlay {
+            GeometryReader { _ in
+                AppKitPullDownMenu(
+                    items: toolbarMicMenuItems,
+                    accessibilityLabel: "Microphone \(toolbarMicLabel)",
+                    toolTip: "Microphone: \(toolbarMicLabel)\nUsed for the next dictation."
+                )
             }
         }
         .help("Microphone: \(toolbarMicLabel)\nUsed for the next dictation.")
         .onAppear {
             appState.refreshInputDevices()
         }
+    }
+
+    private var toolbarMicMenuItems: [AppKitSafeMenuItem] {
+        var items: [AppKitSafeMenuItem] = [
+            .action(
+                title: "System Default",
+                checked: appState.selectedInputDeviceUID.isEmpty
+            ) {
+                appState.setInputDeviceUID("")
+            }
+        ]
+        if !appState.availableInputDevices.isEmpty {
+            items.append(.separator)
+            for device in appState.availableInputDevices {
+                let uid = device.uid
+                items.append(.action(
+                    title: device.name.isEmpty ? "Microphone" : device.name,
+                    checked: appState.selectedInputDeviceUID == uid
+                ) {
+                    appState.setInputDeviceUID(uid)
+                })
+            }
+        }
+        items.append(.separator)
+        items.append(.action(title: "Refresh device list") {
+            appState.refreshInputDevices()
+        })
+        return items
     }
 
     private var toolbarMicLabel: String {
